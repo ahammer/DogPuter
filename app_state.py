@@ -25,7 +25,7 @@ class ContentType(enum.Enum):
 class InputState:
     """Manages input state and cooldown"""
     
-    def __init__(self, cooldown=0.5):
+    def __init__(self, cooldown=1.5):  # Increased cooldown to 1.5 seconds
         self.last_input_time = 0
         self.input_cooldown = cooldown
         self.last_channel_change = 0
@@ -40,7 +40,7 @@ class InputState:
         
     def is_channel_change_allowed(self):
         """Check if channel change is allowed"""
-        return not hasattr(self, 'last_channel_change') or time.time() - self.last_channel_change >= 0.5
+        return not hasattr(self, 'last_channel_change') or time.time() - self.last_channel_change >= 1.5  # Increased cooldown to 1.5 seconds
     
     def record_channel_change(self):
         """Record that a channel change occurred"""
@@ -253,6 +253,14 @@ class ContentState:
                 return True
         elif self.current_type == ContentType.WAITING:
             self.waiting_content.update(delta_time)
+        elif self.current_type == ContentType.VIDEO:
+            # Check if the video has completed
+            frame, is_complete = self.video_content.video_player.update()
+            if is_complete:
+                # Video has completed, return to waiting screen
+                self.video_content.stop()
+                self.current_type = ContentType.WAITING
+                return True
         
         return False
     
@@ -385,6 +393,14 @@ class AppState:
                 video_path = os.path.join("videos", video_filename)
                 video_placeholder_path = video_path + ".txt"
                 
+                # If we're already playing this video, ignore the command
+                if (self.mode == Mode.VIDEO and 
+                    self.content_state.video_content.is_playing and 
+                    hasattr(self.content_state.video_content, 'current_video_filename') and
+                    self.content_state.video_content.current_video_filename == video_filename):
+                    print(f"Already playing video: {video_filename}, ignoring repeat command")
+                    return
+                
                 # Check if video or placeholder exists
                 if os.path.exists(video_path):
                     # Play the actual video
@@ -392,6 +408,8 @@ class AppState:
                     result = self.content_state.set_video_by_filename(video_filename)
                     if result:
                         self.mode = Mode.VIDEO
+                        # Store the current video filename for repeat detection
+                        self.content_state.video_content.current_video_filename = video_filename
                     else:
                         # Fall back to image if video playback fails
                         self._display_image_fallback(mapping)

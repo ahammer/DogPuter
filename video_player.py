@@ -175,7 +175,7 @@ class VideoPlayer:
         """Update the video frame"""
         # If we're displaying a text placeholder, just return the surface
         if self.current_video is None and self.video_surface is not None:
-            return self.video_surface
+            return self.video_surface, False  # Return (surface, is_complete)
         # Handle transition between videos
         if self.in_transition:
             transition_time = time.time() - self.transition_start_time
@@ -198,7 +198,7 @@ class VideoPlayer:
                         frame_surface = pygame.surfarray.make_surface(frame.swapaxes(0, 1))
                         frame_surface = pygame.transform.scale(frame_surface, 
                                                              (self.screen.get_width(), self.screen.get_height()))
-                        return frame_surface
+                        return frame_surface, False  # Not in transition, not complete
                     except Exception as e:
                         print(f"Error getting first frame of new video: {e}")
                         return None
@@ -226,7 +226,7 @@ class VideoPlayer:
                     blended_surface.blit(self.previous_frame, (0, 0))
                     blended_surface.blit(next_surface, (0, 0))
                     
-                    return blended_surface
+                    return blended_surface, False  # Not complete
                 except Exception as e:
                     print(f"Error creating transition: {e}")
                     # If transition fails, just switch to the next video
@@ -239,16 +239,15 @@ class VideoPlayer:
         
         # Normal video playback
         if not self.current_video or self.paused:
-            return None
+            return None, False  # Not complete
         
         # Calculate the current position in the video
         current_time = time.time() - self.start_time
         
         # Check if the video has ended
         if current_time > self.current_video.duration:
-            # Loop the video by resetting the start time
-            self.start_time = time.time()
-            current_time = 0
+            # Signal that the video has completed
+            return None, True
         
         try:
             # Get the current frame
@@ -261,10 +260,10 @@ class VideoPlayer:
             frame_surface = pygame.transform.scale(frame_surface, 
                                                  (self.screen.get_width(), self.screen.get_height()))
             
-            return frame_surface
+            return frame_surface, False  # Not complete
         except Exception as e:
             print(f"Error updating video frame: {e}")
-            return None
+            return None, False
 
 def main():
     """Main function for testing the video player"""
@@ -313,7 +312,16 @@ def main():
         screen.fill((0, 0, 0))
         
         # Update and display the video frame
-        frame = player.update()
+        frame_result = player.update()
+        
+        # Handle the new return format (frame, is_complete)
+        if isinstance(frame_result, tuple):
+            frame, is_complete = frame_result
+        else:
+            # Backward compatibility for older code
+            frame = frame_result
+            is_complete = False
+            
         if frame:
             screen.blit(frame, (0, 0))
         

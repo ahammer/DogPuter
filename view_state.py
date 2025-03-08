@@ -145,7 +145,16 @@ class ViewStateGenerator:
         video_content = app_state.content_state.video_content
         
         # Get the current video frame from the video player
-        frame = video_content.video_player.update()
+        frame_result = video_content.video_player.update()
+        
+        # Handle the new return format (frame, is_complete)
+        if isinstance(frame_result, tuple):
+            frame, is_complete = frame_result
+        else:
+            # Backward compatibility for older version
+            frame = frame_result
+            is_complete = False
+            
         if frame:
             view_state.add_command(RenderCommand(
                 "surface", 

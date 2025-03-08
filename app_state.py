@@ -266,9 +266,11 @@ class ContentState:
         success, channel_name = self.video_content.play_channel(channel_index)
         if success:
             self.current_type = ContentType.VIDEO
+            return True
         elif channel_name:
-            self.set_text(f"Channel: {channel_name}")
-        return success
+            # We need to pass the font from AppState, so we'll return False and let AppState handle it
+            return False, channel_name
+        return False, None
     
     def set_text(self, text, font=None, display_time=3.0, screen_width=800, screen_height=600):
         """Set text content"""
@@ -276,7 +278,8 @@ class ContentState:
         if font:
             self.text_content.set_text(text, font, display_time, screen_width, screen_height)
             self.current_type = ContentType.TEXT
-        return True
+            return True
+        return False
     
     def set_waiting(self):
         """Set waiting screen content"""
@@ -288,9 +291,10 @@ class ContentState:
         if self.current_type == ContentType.VIDEO:
             success, channel_name = self.video_content.change_channel(direction)
             if not success and channel_name:
-                self.set_text(f"Channel: {channel_name}")
-            return success
-        return False
+                # We need to pass the font from AppState, so we'll return False and let AppState handle it
+                return False, channel_name
+            return success, None
+        return False, None
 
 class AppState:
     """Main application state class"""
@@ -336,11 +340,9 @@ class AppState:
         
         # Exit waiting screen on any key press
         if self.mode == Mode.WAITING:
-            self.content_state.set_waiting()  # Reset waiting screen state
-            self.mode = Mode.WAITING
+            # Just exit waiting screen, don't return - continue processing the key
             self.show_feedback("Input accepted!", (0, 0, 255))  # Blue for acceptance
             self.input_state.record_input()
-            return
         
         # Handle number keys for commands
         if key in KEY_MAPPINGS:
@@ -393,7 +395,14 @@ class AppState:
                 self.tts_handler.speak(channel['name'])
                 
                 # Play the video
-                if self.content_state.set_video(channel_index):
+                result = self.content_state.set_video(channel_index)
+                if isinstance(result, tuple):
+                    success, channel_name = result
+                    if not success and channel_name:
+                        # Display channel name as text
+                        self.content_state.set_text(f"Channel: {channel_name}", self.font, 3.0, self.screen_width, self.screen_height)
+                        self.mode = Mode.TEXT
+                elif result:
                     self.mode = Mode.VIDEO
     
     def handle_joystick(self, joystick):
@@ -449,15 +458,22 @@ class AppState:
         self.show_feedback("Channel changed!", (0, 0, 255))  # Blue for acceptance
         
         # Change channel
-        channel_index = (self.content_state.video_content.current_channel + direction) % len(VIDEO_CHANNELS)
-        channel = VIDEO_CHANNELS[channel_index]
-        print(f"Changed to channel: {channel['name']}")
-        
-        # Speak the channel name
-        self.tts_handler.speak(channel['name'])
-        
-        # Update video content
-        if self.content_state.set_video(channel_index):
+        result = self.content_state.change_video_channel(direction)
+        if isinstance(result, tuple):
+            success, channel_name = result
+            if not success and channel_name:
+                # Display channel name as text
+                channel_index = (self.content_state.video_content.current_channel + direction) % len(VIDEO_CHANNELS)
+                channel = VIDEO_CHANNELS[channel_index]
+                print(f"Changed to channel: {channel['name']}")
+                
+                # Speak the channel name
+                self.tts_handler.speak(channel['name'])
+                
+                # Display channel name as text
+                self.content_state.set_text(f"Channel: {channel_name}", self.font, 3.0, self.screen_width, self.screen_height)
+                self.mode = Mode.TEXT
+        elif result:
             self.mode = Mode.VIDEO
     
     def show_feedback(self, message, color):

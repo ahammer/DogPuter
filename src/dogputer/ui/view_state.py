@@ -570,6 +570,106 @@ class ViewStateGenerator:
             z_index=15  # Always on top
         ))
         
+        # Add progress bar when input is rejected to show time until next input allowed
+        if is_error and feedback_state.input_rejected and app_state.input_state:
+            # Calculate progress as ratio of time since last input to cooldown time
+            current_time = time.time()
+            time_since_last_input = current_time - app_state.input_state.last_input_time
+            cooldown_time = app_state.input_state.input_cooldown
+            progress = min(1.0, time_since_last_input / cooldown_time)
+            
+            # Create progress bar as a circular border that fills up clockwise
+            # We'll create this on a separate surface for better compositing
+            progress_size = icon_size + 20  # Slightly larger than the icon
+            progress_surface = pygame.Surface((progress_size, progress_size), pygame.SRCALPHA)
+            center = progress_size // 2
+            radius = progress_size // 2 - 5
+            border_thickness = 10  # Thicker border for visibility
+            
+            # Draw progress arc - starting from the top (270 degrees) and moving clockwise
+            # Convert progress to angle (0.0 to 1.0 -> 0 to 360 degrees)
+            angle = int(360 * progress)
+            start_angle = 270  # Start at top (270 degrees in pygame coordinates)
+            end_angle = (start_angle + angle) % 360
+            
+            if progress < 1.0:
+                # Draw background circle (dimmed) - represents remaining time
+                pygame.draw.circle(
+                    progress_surface,
+                    (*YELLOW_PRIMARY, 100),  # Semi-transparent yellow
+                    (center, center),
+                    radius,
+                    border_thickness
+                )
+                
+                # Draw progress arc - represents elapsed time
+                # Use a simpler approach with circle segments instead of arcs
+                if progress > 0:  # Only draw if there's progress
+                    # Draw in segments to avoid pygame.draw.arc issues
+                    segments = 36  # Draw in 10-degree segments
+                    segment_angle = 360 / segments
+                    filled_segments = int(segments * progress)
+                    
+                    for i in range(filled_segments):
+                        # Calculate segment angle in radians
+                        segment_start = math.radians(start_angle - i * segment_angle)
+                        segment_end = math.radians(start_angle - (i + 1) * segment_angle)
+                        
+                        # Calculate points on the circle
+                        segment_points = []
+                        segment_points.append((center, center))  # Center point
+                        
+                        # Add points along the arc
+                        steps = 5  # Number of points per segment
+                        for j in range(steps + 1):
+                            t = j / steps
+                            angle = segment_start * (1 - t) + segment_end * t
+                            x = center + radius * math.cos(angle)
+                            y = center + radius * math.sin(angle)
+                            segment_points.append((x, y))
+                        
+                        # Close the polygon back to first point
+                        segment_points.append((center, center))
+                        
+                        # Draw the segment
+                        pygame.draw.polygon(
+                            progress_surface,
+                            YELLOW_PRIMARY,  # Solid yellow
+                            segment_points
+                        )
+                    
+                    # Draw the border circle on top to create the border effect
+                    pygame.draw.circle(
+                        progress_surface,
+                        YELLOW_PRIMARY,
+                        (center, center),
+                        radius,
+                        border_thickness // 2  # Thinner border to account for filled segments
+                    )
+            else:
+                # If progress is complete, show full circle in bright color
+                pygame.draw.circle(
+                    progress_surface,
+                    BLUE_PRIMARY,  # Change to blue when time is up
+                    (center, center),
+                    radius,
+                    border_thickness
+                )
+            
+            # Position progress bar centered around the icon
+            progress_position = (
+                (self.screen_width - progress_size) // 2,
+                (self.screen_height - progress_size) // 2
+            )
+            
+            # Add to view state
+            view_state.add_command(RenderCommand(
+                "surface", 
+                surface=progress_surface, 
+                position=progress_position,
+                z_index=14  # Just below the icon
+            ))
+        
         # Add a whole-screen flash if animating
         if feedback_state.is_animating():
             # Create a quick flash that fades out
@@ -585,5 +685,5 @@ class ViewStateGenerator:
                 "surface", 
                 surface=flash_surface, 
                 position=(0, 0),
-                z_index=14  # Just below the feedback but above everything else
+                z_index=13  # Below the feedback elements
             ))

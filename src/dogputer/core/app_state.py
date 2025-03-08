@@ -47,22 +47,7 @@ class InputState:
             self.rejected_inputs_count = 0
             print(f"Input allowed: Resetting cooldown from {old_cooldown:.2f}s to {self.input_cooldown:.2f}s")
             return True
-        else:
-            # If input is rejected because cooldown is active, increase cooldown
-            self.rejected_inputs_count += 1
-            
-            # Calculate new cooldown time - increases with repeated rejections
-            old_cooldown = self.input_cooldown
-            # Each rejection adds 30% to the cooldown up to max_cooldown
-            self.input_cooldown = min(
-                self.max_cooldown, 
-                self.base_cooldown * (1 + 0.3 * self.rejected_inputs_count)
-            )
-            
-            print(f"Input rejected: Rejection #{self.rejected_inputs_count}, increased cooldown from {old_cooldown:.2f}s to {self.input_cooldown:.2f}s")
-            
-            # Reset timeout based on new cooldown
-            self.last_input_time = current_time
+        else:       
             return False
     
     def record_input(self):
@@ -224,6 +209,7 @@ class FeedbackState:
         self.animation_start_time = 0
         self.animation_duration = animation_duration
         self.is_active = False
+        self.input_rejected = False  # Flag to track if input was rejected
     
     def show_feedback(self, message, color):
         """Show feedback with the given message and color"""
@@ -232,14 +218,28 @@ class FeedbackState:
         self.start_time = time.time()
         self.animation_start_time = time.time()
         self.is_active = True
+        
+        # Check if this is a rejection message
+        if "too fast" in message.lower() or color == (255, 255, 0):
+            self.input_rejected = True
+        else:
+            self.input_rejected = False
     
-    def update(self, delta_time):
+    def update(self, delta_time, input_state=None):
         """Update feedback state"""
         if not self.is_active:
             return
         
         current_time = time.time()
-        if current_time - self.start_time >= self.duration:
+        
+        # If input was rejected, keep feedback visible until input is allowed again
+        if self.input_rejected and input_state:
+            # Only clear the feedback if input is now allowed
+            if input_state.is_input_allowed():
+                self.is_active = False
+                self.input_rejected = False
+        # Otherwise use normal duration
+        elif current_time - self.start_time >= self.duration:
             self.is_active = False
     
     def get_animation_progress(self):
@@ -364,7 +364,7 @@ class AppState:
     def update(self, delta_time):
         """Update application state"""
         # Update feedback state
-        self.feedback_state.update(delta_time)
+        self.feedback_state.update(delta_time, self.input_state)
         
         # Always sync mode with content type for consistency
         if self.content_state.current_type == ContentType.WAITING and self.mode != Mode.WAITING:

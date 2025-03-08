@@ -30,7 +30,8 @@ class DogPuter:
         # Set up display
         self.screen_width = SCREEN_WIDTH
         self.screen_height = SCREEN_HEIGHT
-        self.screen = pygame.display.set_mode((self.screen_width, self.screen_height))
+        self.screen = pygame.display.set_mode((self.screen_width, self.screen_height), pygame.FULLSCREEN)
+
         pygame.display.set_caption("DogPuter")
         
         # Set up directories
@@ -185,24 +186,10 @@ class DogPuter:
                 if key_constant is not None:
                     accepted_keys.append(key_constant)
             
-            # Process input events
-            for event in pygame.event.get():
+            # Handle quit events directly from pygame to ensure they always work
+            for event in pygame.event.get([pygame.QUIT]):
                 if event.type == pygame.QUIT:
                     running = False
-                elif event.type == pygame.KEYDOWN:
-                    # Exit on ESC key
-                    if event.key == pygame.K_ESCAPE:
-                        running = False
-                    # Only process keys in our accepted list if we have one
-                    elif not accepted_keys or event.key in accepted_keys:
-                        # Create particles on key press for visual feedback
-                        x = random.randint(self.screen_width//3, 2*self.screen_width//3)
-                        y = random.randint(self.screen_height//3, 2*self.screen_height//3)
-                        self.particle_system.create_burst(x, y, count=15, color=YELLOW_PRIMARY)
-                        self.app_state.handle_key_press(event.key)
-                elif event.type == pygame.JOYBUTTONDOWN:
-                    # Handle joystick button press as input
-                    self.app_state.handle_key_press(pygame.K_SPACE)  # Treat as space key
             
             # Update input handler
             self.input_handler.update()
@@ -210,9 +197,14 @@ class DogPuter:
             # Process the events from our input handler
             events = self.input_handler.get_events()
             for event in events:
-                if event.type == pygame.KEYDOWN:
+                if event.type == pygame.QUIT:
+                    running = False
+                elif event.type == pygame.KEYDOWN:
+                    # Exit on ESC key
+                    if event.key == pygame.K_ESCAPE:
+                        running = False
                     # Only process keys that are in our accepted list if we have one
-                    if not accepted_keys or event.key in accepted_keys:
+                    elif not accepted_keys or event.key in accepted_keys:
                         # Create particles on key press for visual feedback
                         x = random.randint(self.screen_width//3, 2*self.screen_width//3)
                         y = random.randint(self.screen_height//3, 2*self.screen_height//3)
@@ -225,10 +217,10 @@ class DogPuter:
                         # Process key - handle specially for X-Arcade keys
                         if self.config.get('keymapping_name') == 'x-arcade-kb':
                             # For x-arcade-kb, if key is a mapped X-Arcade button, check the command in the mapping
-                            from dogputer.core.config import INPUT_MAPPINGS
-                            if event.key in INPUT_MAPPINGS:
+                            from dogputer.core.config import INPUT_MAPPINGS as config_input_mappings
+                            if event.key in config_input_mappings:
                                 # Process mapped key
-                                command = INPUT_MAPPINGS[event.key]
+                                command = config_input_mappings[event.key]
                                 print(f"Found mapping for key {key_name}: {command}")
                                 
                                 # Handle video commands differently
@@ -243,9 +235,9 @@ class DogPuter:
                             
                             # Always process key for X-Arcade
                             self.app_state.handle_key_press(event.key)
-                        elif event.key in INPUT_MAPPINGS:
+                        elif event.key in self.input_config["input_mappings"]:
                             # Process mapped key
-                            command = INPUT_MAPPINGS[event.key]
+                            command = self.input_config["input_mappings"][event.key]
                             print(f"Found mapping for key {key_name}: {command}")
                             
                             # Handle video commands differently
@@ -257,6 +249,9 @@ class DogPuter:
                             self.app_state.handle_key_press(event.key)
                         else:
                             print(f"No mapping found for key {key_name}")
+                elif event.type == pygame.JOYBUTTONDOWN:
+                    # Handle joystick button press as input
+                    self.app_state.handle_key_press(pygame.K_SPACE)  # Treat as space key
             
             # Update state
             self.app_state.update(delta_time)

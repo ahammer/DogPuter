@@ -52,8 +52,8 @@ class KeyboardInputHandler(InputHandler):
     
     def get_events(self):
         """Get all pending pygame events"""
-        # Get events from pygame event queue
-        all_events = pygame.event.get()
+        # Store all events except QUIT, which is handled directly in the main loop
+        all_events = pygame.event.get(exclude=[pygame.QUIT])
         
         # Filter and log keyboard events for debugging
         self.events = []
@@ -138,8 +138,8 @@ class JoystickInputHandler(InputHandler):
     
     def get_events(self):
         """Get all pending pygame events, filtering for joystick events"""
-        # Get all events
-        all_events = pygame.event.get()
+        # Get all events except QUIT, which is handled directly in the main loop
+        all_events = pygame.event.get(exclude=[pygame.QUIT])
         
         # Filter for joystick events
         self.events = []
@@ -314,8 +314,8 @@ class XArcadeInputHandler(KeyboardInputHandler):
         
     def get_events(self):
         """Get all pending pygame events, filtering for X-Arcade keys"""
-        # Get all events
-        all_events = pygame.event.get()
+        # Get all events except QUIT, which is handled directly in the main loop
+        all_events = pygame.event.get(exclude=[pygame.QUIT])
         
         # Filter for X-Arcade keys and mapped command keys
         self.events = []

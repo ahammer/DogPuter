@@ -1,6 +1,6 @@
 # DogPuter
 
-A simple Pygame-based application designed to run on a Raspberry Pi that allows dogs to interact with buttons and joysticks to trigger sounds, images, and videos.
+A simple Pygame-based application designed to run on a Raspberry Pi that allows dogs to interact with buttons and joysticks to trigger sounds, images, and videos. Features text-to-speech commands and smooth transitions between media.
 
 ## Overview
 
@@ -12,6 +12,7 @@ DogPuter maps keystrokes to sounds and images, and joystick movements to videos.
 - Pygame
 - Raspberry Pi (recommended, but can run on any computer with Python)
 - Input devices (keyboard, buttons, joystick)
+- pyttsx3 (for text-to-speech functionality)
 
 ## Setup
 
@@ -56,21 +57,21 @@ This will:
 
 ### Key Mappings
 
-You can customize the key mappings in the `config.py` file. Each key mapping associates a pygame key constant with a sound file, an image file, and a display time.
+You can customize the key mappings in the `config.py` file. Each key mapping associates a pygame key constant with a sound file, an image file, a display time, and a command to speak.
 
 ```python
 KEY_MAPPINGS = {
-    pygame.K_a: {"sound": "play.wav", "image": "play.jpg", "display_time": 5},
-    pygame.K_s: {"sound": "rope.wav", "image": "rope.jpg", "display_time": 5},
-    # Add more key mappings as needed
+    pygame.K_0: {"sound": "play.wav", "image": "play.jpg", "display_time": 5, "command": "play"},
+    pygame.K_1: {"sound": "rope.wav", "image": "rope.jpg", "display_time": 5, "command": "rope"},
+    # Add more key mappings as needed (keys 0-9 available)
 }
 ```
 
 For a list of pygame key constants, see the [pygame documentation](https://www.pygame.org/docs/ref/key.html).
 
-### Video Channels
+### Video Channels and Arrow Key Mappings
 
-You can customize the video channels in the `config.py` file. Each channel has a name and an associated video file.
+You can customize the video channels and arrow key mappings in the `config.py` file:
 
 ```python
 VIDEO_CHANNELS = [
@@ -78,6 +79,13 @@ VIDEO_CHANNELS = [
     {"name": "Birds", "video": "birds.mp4"},
     # Add more video channels as needed
 ]
+
+ARROW_KEY_MAPPINGS = {
+    pygame.K_UP: 0,     # Birds
+    pygame.K_RIGHT: 1,  # Dogs
+    pygame.K_DOWN: 2,   # Cats
+    pygame.K_LEFT: 3,   # Squirrels
+}
 ```
 
 ### Display Settings
@@ -99,6 +107,37 @@ To run the DogPuter application:
 python main.py
 ```
 
+## Features
+
+### Text-to-Speech
+
+The application now includes text-to-speech functionality using the pyttsx3 library. When a command button is pressed, the application will:
+
+1. Play the associated sound file
+2. Speak the command name using text-to-speech
+3. Display the associated image
+
+This provides auditory feedback for the user, making it easier to understand what command was triggered.
+
+### Transitions
+
+The application now includes smooth transitions between images and videos:
+
+1. Image transitions: When switching between images, a fade transition is applied
+2. Video transitions: When switching between videos, a fade transition is applied
+
+These transitions make the application more visually appealing and provide a smoother user experience.
+
+### Keyboard Controls
+
+- Number keys (0-9): Trigger commands (play, rope, ball, etc.)
+- Arrow keys: Directly select video channels
+- ESC key: Exit the application
+
+### Joystick Controls
+
+- Move joystick: Cycle through video channels
+
 ## DALL-E Image Generation
 
 The DogPuter application includes integration with OpenAI's DALL-E to generate appropriate images for each keypress. This feature:
@@ -115,12 +154,6 @@ To use this feature:
 
 The script uses carefully crafted prompts for each key to generate images that are appropriate for dogs and clearly communicate the purpose of each button.
 
-## Controls
-
-- Press the configured keys (default: A, S, D, F, G, H) to trigger sounds and images
-- Move the joystick to change video channels
-- Press ESC to exit the application
-
 ## Hardware Setup for Raspberry Pi
 
 For a complete DogPuter setup on a Raspberry Pi, you might want to:
@@ -129,10 +162,6 @@ For a complete DogPuter setup on a Raspberry Pi, you might want to:
 2. Connect a joystick via USB or GPIO
 3. Connect a display via HDMI
 4. Connect speakers or headphones for audio output
-
-## Note on Video Playback
-
-The current implementation displays channel names when the joystick is moved. To implement actual video playback, you would need to integrate a video playback library compatible with Pygame, such as OpenCV or MoviePy.
 
 ## License
 

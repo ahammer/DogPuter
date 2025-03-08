@@ -73,31 +73,17 @@ def create_basic_image(filename, text, size=(800, 600), bg_color=(30, 30, 30), t
 
 def create_sample_sound(filename, duration=1.0, freq=440):
     """Create a sample sound file"""
+    # This function is now a placeholder since we're using TTS instead of sine tones
+    # We'll create an empty WAV file as a placeholder
     import wave
-    import struct
-    import numpy as np
     
-    # Parameters for the WAV file
-    sample_rate = 44100
-    num_samples = int(sample_rate * duration)
-    
-    # Generate a simple sine wave
-    samples = []
-    for i in range(num_samples):
-        sample = 32767 * 0.5 * np.sin(2 * np.pi * freq * i / sample_rate)
-        samples.append(int(sample))
-    
-    # Create a WAV file
+    # Create an empty WAV file
     with wave.open(filename, 'w') as wav_file:
-        # Set parameters
-        wav_file.setparams((1, 2, sample_rate, num_samples, 'NONE', 'not compressed'))
-        
-        # Write the samples
-        for sample in samples:
-            packed_sample = struct.pack('h', sample)
-            wav_file.writeframes(packed_sample)
+        # Set parameters for an empty file
+        wav_file.setparams((1, 2, 44100, 0, 'NONE', 'not compressed'))
+        # No frames to write
     
-    print(f"Created sound: {filename}")
+    print(f"Created empty sound placeholder: {filename}")
 
 def main():
     """Main function to create sample media files"""
@@ -148,17 +134,24 @@ def main():
 
 def generate_prompt_for_key(key_name):
     """Generate a detailed prompt for DALL-E based on the key name"""
+    # Base template for cartoon-style images with dog-friendly colors
+    base_template = "Create a friendly, cartoon-style illustration for children that is also optimized for dog vision. Use a simple, clear design with bold outlines and predominantly blue and yellow for important elements, though some red and green can be included. The image should be cute and appealing, not abstract or overly stylized."
+    
     prompts = {
-        "Play": "A high-quality, cheerful image of a dog toy, specifically a colorful ball or frisbee on grass, perfect for play time. The image should be bright, inviting, and clearly show the toy ready for a dog to play with.",
-        "Rope": "A high-quality image of a dog rope toy, with colorful twisted fabric, laid out on a clean surface. The rope should have knots on both ends and look durable and fun for a dog to chew and play with.",
-        "Ball": "A high-quality image of a tennis ball or rubber ball specifically designed for dogs, sitting on grass or a clean surface. The ball should be vibrant and appealing, clearly meant for a dog to fetch and play with.",
-        "Treat": "A high-quality image of dog treats arranged neatly on a clean plate or surface. The treats should look appetizing, perhaps bone-shaped or in various fun shapes that would appeal to a dog owner.",
-        "Outside": "A high-quality, sunny image of a beautiful backyard, park, or outdoor space that would be perfect for a dog to play in. The image should show green grass, perhaps some trees, and convey a sense of freedom and outdoor fun.",
-        "Walk": "A high-quality image of a dog leash and collar, or perhaps a path in a park that suggests it's time for a walk. The image should be inviting and clearly communicate the concept of taking a dog for a walk."
+        "Play": f"{base_template} Draw a happy cartoon dog playing with a toy, with blue and yellow highlights. The scene should clearly communicate 'play time' in a way that's easy for both children and dogs to understand.",
+        "Rope": f"{base_template} Draw a cartoon-style dog rope toy with blue and yellow colors and clear knots on both ends. Make it look fun and appealing for a children's app, while being recognizable to dogs.",
+        "Ball": f"{base_template} Draw a cartoon-style ball for dogs, with blue and yellow patterns. Make it look bouncy and fun in a children's illustration style, while being instantly recognizable to dogs.",
+        "Treat": f"{base_template} Draw a cartoon-style dog bone or treat with blue and yellow highlights. Make it look appetizing and fun in a children's illustration style, while being instantly recognizable to dogs.",
+        "Outside": f"{base_template} Draw a simple, cartoon-style outdoor scene with a tree, sun, and grass. Use blue for the sky and yellow for the sun to make these elements pop for dogs, while keeping the overall style appropriate for children.",
+        "Walk": f"{base_template} Draw a cartoon-style dog leash or a simple path in a park that suggests it's time for a walk. Use blue and yellow for important elements to make them stand out for dogs, while keeping the style fun for children.",
+        "Water": f"{base_template} Draw a cartoon-style water bowl or water dish for dogs with blue water. Make it look refreshing and appealing in a children's illustration style, while being instantly recognizable to dogs.",
+        "Food": f"{base_template} Draw a cartoon-style dog food bowl filled with kibble. Use blue for the bowl and yellow/brown for the food to make it stand out for dogs, while keeping the style appropriate for children.",
+        "Toy": f"{base_template} Draw a cartoon-style collection of dog toys (like a stuffed animal or squeaky toy) with blue and yellow elements. Make them look fun and appealing in a children's illustration style.",
+        "Bed": f"{base_template} Draw a cartoon-style cozy dog bed or sleeping area. Use blue and yellow for the bed to make it stand out for dogs, while keeping the overall style cute and appropriate for children."
     }
     
     # Get the prompt for the key name, or use a generic one if not found
-    return prompts.get(key_name, f"A high-quality, clear image representing the concept of '{key_name}' for a dog, in a style appropriate for a dog-focused application.")
+    return prompts.get(key_name, f"{base_template} Draw a simple, cartoon-style illustration representing the concept of '{key_name}' that would appeal to both children and dogs, with blue and yellow highlights for dog visibility.")
 
 if __name__ == "__main__":
     main()

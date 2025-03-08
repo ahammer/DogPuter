@@ -2,8 +2,12 @@ import pygame
 import os
 import sys
 import time
-from config import KEY_MAPPINGS, VIDEO_CHANNELS, SCREEN_WIDTH, SCREEN_HEIGHT, BACKGROUND_COLOR, DEFAULT_DISPLAY_TIME
+from config import (
+    KEY_MAPPINGS, VIDEO_CHANNELS, ARROW_KEY_MAPPINGS,
+    SCREEN_WIDTH, SCREEN_HEIGHT, BACKGROUND_COLOR, DEFAULT_DISPLAY_TIME
+)
 from video_player import VideoPlayer
+from tts_handler import TTSHandler
 
 class DogPuter:
     def __init__(self):
@@ -33,6 +37,9 @@ class DogPuter:
         # Set up key mappings from config
         self.key_mappings = KEY_MAPPINGS
         
+        # Set up arrow key mappings for videos from config
+        self.arrow_key_mappings = ARROW_KEY_MAPPINGS
+        
         # Set up joystick mappings for videos from config
         self.video_channels = VIDEO_CHANNELS
         
@@ -46,6 +53,9 @@ class DogPuter:
         # Initialize video player
         self.video_player = VideoPlayer(self.screen, self.videos_dir)
         
+        # Initialize text-to-speech handler
+        self.tts_handler = TTSHandler()
+        
         # Current state
         self.current_image = None
         self.image_end_time = 0
@@ -57,6 +67,13 @@ class DogPuter:
         
         # Font for text
         self.font = pygame.font.SysFont(None, 48)
+        
+        # Image transition settings
+        self.transition_duration = 0.5  # seconds
+        self.in_transition = False
+        self.transition_start_time = 0
+        self.previous_image = None
+        self.next_image = None
 
     def load_image(self, image_name):
         """Load an image from the images directory"""
@@ -79,6 +96,7 @@ class DogPuter:
 
     def handle_key_press(self, key):
         """Handle a key press event"""
+        # Handle number keys for commands
         if key in self.key_mappings:
             mapping = self.key_mappings[key]
             
@@ -86,16 +104,59 @@ class DogPuter:
             if "sound" in mapping:
                 self.play_sound(mapping["sound"])
             
-            # Display image
+            # Speak command using TTS
+            if "command" in mapping:
+                self.tts_handler.speak(mapping["command"])
+            
+            # Display image with transition
             if "image" in mapping:
-                self.current_image = self.load_image(mapping["image"])
+                # If an image is already displayed, set up transition
+                if self.current_image and not self.in_transition:
+                    self.previous_image = self.current_image
+                    self.next_image = self.load_image(mapping["image"])
+                    self.in_transition = True
+                    self.transition_start_time = time.time()
+                else:
+                    # No current image, just display the new one
+                    self.current_image = self.load_image(mapping["image"])
+                
                 display_time = mapping.get("display_time", self.default_display_time)
-                self.image_end_time = time.time() + display_time
+                self.image_end_time = time.time() + display_time + (self.transition_duration if self.in_transition else 0)
                 
                 # Stop any playing video
                 if self.playing_video:
                     self.video_player.stop()
                     self.playing_video = False
+        
+        # Handle arrow keys for video channels
+        elif key in self.arrow_key_mappings:
+            channel_index = self.arrow_key_mappings[key]
+            if 0 <= channel_index < len(self.video_channels):
+                self.current_channel = channel_index
+                channel = self.video_channels[self.current_channel]
+                print(f"Switched to channel: {channel['name']}")
+                
+                # Speak the channel name
+                self.tts_handler.speak(channel['name'])
+                
+                # Clear any displayed image
+                self.current_image = None
+                self.image_end_time = 0
+                self.in_transition = False
+                
+                # Try to play the video
+                try:
+                    video_file = channel["video"]
+                    if self.video_player.play_video(video_file):
+                        self.playing_video = True
+                    else:
+                        # If video playback fails, display the channel name
+                        self.playing_video = False
+                        self.display_text(f"Channel: {channel['name']}")
+                except Exception as e:
+                    print(f"Error playing video: {e}")
+                    self.playing_video = False
+                    self.display_text(f"Channel: {channel['name']}")
 
     def handle_joystick(self):
         """Handle joystick input for video channel selection"""
@@ -192,6 +253,27 @@ class DogPuter:
                 frame = self.video_player.update()
                 if frame:
                     self.screen.blit(frame, (0, 0))
+            elif self.in_transition and self.previous_image and self.next_image:
+                # Handle image transition
+                transition_time = time.time() - self.transition_start_time
+                
+                # If transition is complete, switch to the next image
+                if transition_time >= self.transition_duration:
+                    self.current_image = self.next_image
+                    self.previous_image = None
+                    self.next_image = None
+                    self.in_transition = False
+                else:
+                    # Create transition effect (fade)
+                    progress = transition_time / self.transition_duration
+                    
+                    # Set alpha values for the blend
+                    self.previous_image.set_alpha(int(255 * (1 - progress)))
+                    self.next_image.set_alpha(int(255 * progress))
+                    
+                    # Blit both images
+                    self.screen.blit(self.previous_image, (0, 0))
+                    self.screen.blit(self.next_image, (0, 0))
             elif self.current_image and time.time() < self.image_end_time:
                 # Display current image
                 self.screen.blit(self.current_image, (0, 0))
@@ -205,6 +287,7 @@ class DogPuter:
         # Clean up
         if self.playing_video:
             self.video_player.stop()
+        self.tts_handler.stop()
         pygame.quit()
         sys.exit()
 

@@ -1,15 +1,18 @@
 import pygame
 
 # Key mappings configuration
-# Format: pygame key constant: {"sound": sound_file, "image": image_file, "display_time": seconds}
+# Format: pygame key constant: {"sound": sound_file, "image": image_file, "display_time": seconds, "command": text_to_speak}
 KEY_MAPPINGS = {
-    pygame.K_a: {"sound": "play.wav", "image": "play.jpg", "display_time": 5},
-    pygame.K_s: {"sound": "rope.wav", "image": "rope.jpg", "display_time": 5},
-    pygame.K_d: {"sound": "ball.wav", "image": "ball.jpg", "display_time": 5},
-    pygame.K_f: {"sound": "treat.wav", "image": "treat.jpg", "display_time": 5},
-    pygame.K_g: {"sound": "outside.wav", "image": "outside.jpg", "display_time": 5},
-    pygame.K_h: {"sound": "walk.wav", "image": "walk.jpg", "display_time": 5},
-    # Add more key mappings as needed
+    pygame.K_0: {"sound": "play.wav", "image": "play.jpg", "display_time": 5, "command": "play"},
+    pygame.K_1: {"sound": "rope.wav", "image": "rope.jpg", "display_time": 5, "command": "rope"},
+    pygame.K_2: {"sound": "ball.wav", "image": "ball.jpg", "display_time": 5, "command": "ball"},
+    pygame.K_3: {"sound": "treat.wav", "image": "treat.jpg", "display_time": 5, "command": "treat"},
+    pygame.K_4: {"sound": "outside.wav", "image": "outside.jpg", "display_time": 5, "command": "outside"},
+    pygame.K_5: {"sound": "walk.wav", "image": "walk.jpg", "display_time": 5, "command": "walk"},
+    pygame.K_6: {"sound": "water.wav", "image": "water.jpg", "display_time": 5, "command": "water"},
+    pygame.K_7: {"sound": "food.wav", "image": "food.jpg", "display_time": 5, "command": "food"},
+    pygame.K_8: {"sound": "toy.wav", "image": "toy.jpg", "display_time": 5, "command": "toy"},
+    pygame.K_9: {"sound": "bed.wav", "image": "bed.jpg", "display_time": 5, "command": "bed"},
 }
 
 # Video channels configuration
@@ -22,6 +25,14 @@ VIDEO_CHANNELS = [
     {"name": "Water", "video": "water.mp4"},
     # Add more video channels as needed
 ]
+
+# Arrow key mappings for video channels
+ARROW_KEY_MAPPINGS = {
+    pygame.K_UP: 0,     # Birds
+    pygame.K_RIGHT: 1,  # Dogs
+    pygame.K_DOWN: 2,   # Cats
+    pygame.K_LEFT: 3,   # Squirrels
+}
 
 # Display settings
 SCREEN_WIDTH = 800

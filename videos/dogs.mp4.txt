@@ -1,0 +1,2 @@
+Placeholder for Dogs video
+In a real setup, you would place an actual video file here.

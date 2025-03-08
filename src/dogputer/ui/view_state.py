@@ -1,7 +1,7 @@
 import pygame
 import math
 import time
-from app_state import Mode, ContentType
+from dogputer.core.app_state import Mode, ContentType
 
 class RenderCommand:
     """A command to render something to the screen"""

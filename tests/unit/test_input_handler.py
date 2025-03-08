@@ -12,11 +12,25 @@ from unittest.mock import patch, MagicMock
 # Add src directory to path for imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "src")))
 
-# Import the classes to test 
-from dogputer.io.input_handler import (InputHandler, KeyboardInputHandler, 
-                                      JoystickInputHandler, XArcadeInputHandler,
-                                      CompositeInputHandler, MockInputHandler,
-                                      create_input_handler)
+# Import the classes to test
+import sys
+import os
+
+# Ensure we can find the input_handler module in either location
+try:
+    # Try to import from the new package structure
+    from dogputer.io.input_handler import (InputHandler, KeyboardInputHandler, 
+                                          JoystickInputHandler, XArcadeInputHandler,
+                                          CompositeInputHandler, MockInputHandler,
+                                          create_input_handler)
+except ImportError:
+    # Fall back to importing from the root directory
+    print("Note: Using input_handler from root directory. Run the migration script.")
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+    from input_handler import (InputHandler, KeyboardInputHandler, 
+                              JoystickInputHandler, XArcadeInputHandler, 
+                              CompositeInputHandler, MockInputHandler,
+                              create_input_handler)
 
 class TestKeyboardInputHandler:
     """Test cases for the KeyboardInputHandler class"""

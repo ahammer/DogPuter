@@ -3,16 +3,16 @@ import os
 import sys
 import time
 import math
-from config import (
+from dogputer.core.config import (
     KEY_MAPPINGS, VIDEO_CHANNELS, ARROW_KEY_MAPPINGS,
     SCREEN_WIDTH, SCREEN_HEIGHT, BACKGROUND_COLOR, DEFAULT_DISPLAY_TIME
 )
-from video_player import VideoPlayer
-from tts_handler import TTSHandler
-from app_state import AppState
-from view_state import ViewStateGenerator
-from renderer import Renderer
-from animation import AnimationSystem, EasingFunctions
+from dogputer.ui.video_player import VideoPlayer
+from dogputer.core.tts_handler import TTSHandler
+from dogputer.core.app_state import AppState
+from dogputer.ui.view_state import ViewStateGenerator
+from dogputer.ui.renderer import Renderer
+from dogputer.ui.animation import AnimationSystem, EasingFunctions
 
 class DogPuter:
     def __init__(self):

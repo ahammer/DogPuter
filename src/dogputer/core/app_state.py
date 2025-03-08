@@ -2,7 +2,7 @@ import os
 import time
 import enum
 import pygame
-from config import (
+from dogputer.core.config import (
     KEY_MAPPINGS, VIDEO_CHANNELS, ARROW_KEY_MAPPINGS,
     DEFAULT_DISPLAY_TIME
 )

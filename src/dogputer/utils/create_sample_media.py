@@ -14,7 +14,7 @@ import numpy as np
 from PIL import Image
 from openai import OpenAI
 from moviepy import ImageClip, CompositeVideoClip, TextClip, VideoFileClip
-from config import KEY_MAPPINGS, VIDEO_CHANNELS
+from dogputer.core.config import KEY_MAPPINGS, VIDEO_CHANNELS
 
 def create_dalle_image(prompt, filename, size=(1024, 1024), model="dall-e-3"):
     """Create an image using DALL-E based on the prompt"""

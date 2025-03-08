@@ -10,7 +10,7 @@ import numpy as np
 from PIL import Image
 from moviepy.video.VideoClip import ImageClip
 from moviepy.video.compositing.CompositeVideoClip import CompositeVideoClip
-from config import KEY_MAPPINGS, VIDEO_CHANNELS
+from dogputer.core.config import KEY_MAPPINGS, VIDEO_CHANNELS
 
 def create_video_from_image(image_path, output_filename, duration=5.0, effect="zoom"):
     """Create a video from an image with zoom or pan effects"""

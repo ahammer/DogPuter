@@ -14,12 +14,12 @@ import numpy as np
 # Add src directory to path for imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "src")))
 
-# Import the class to test
-from dogputer.ui.video_player import VideoPlayer  # This will be the new location once we refactor
-
 # For tests before refactoring, we can use this:
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 from video_player import VideoPlayer as OriginalVideoPlayer
+
+# This import will work after refactoring:
+# from dogputer.ui.video_player import VideoPlayer
 
 
 class TestVideoPlayer:

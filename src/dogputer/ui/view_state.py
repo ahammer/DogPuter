@@ -394,32 +394,7 @@ class ViewStateGenerator:
             end_pos = (self.screen_width, self.screen_height - corner_length)
             pygame.draw.line(frame_surface, BLUE_PRIMARY, start_pos, end_pos, frame_thickness)
             
-            # Add pulsing indicator to show this is a video
-            pulse_alpha = int(100 + 100 * abs(math.sin(current_time * 3)))
-            indicator_size = 30
-            
-            # Create a small "playing" indicator in one corner
-            indicator_surface = pygame.Surface((indicator_size * 3, indicator_size), pygame.SRCALPHA)
-            
-            # Draw three circles in a row (like a play symbol)
-            pygame.draw.circle(indicator_surface, 
-                              (*YELLOW_PRIMARY, pulse_alpha), 
-                              (indicator_size // 2, indicator_size // 2), 
-                              indicator_size // 2 - 2)
-            pygame.draw.circle(indicator_surface, 
-                              (*YELLOW_PRIMARY, pulse_alpha), 
-                              (indicator_size + indicator_size // 2, indicator_size // 2), 
-                              indicator_size // 2 - 2)
-            pygame.draw.circle(indicator_surface, 
-                              (*YELLOW_PRIMARY, pulse_alpha), 
-                              (2 * indicator_size + indicator_size // 2, indicator_size // 2), 
-                              indicator_size // 2 - 2)
-            
-            # Position in top-right corner, inside the frame
-            indicator_pos = (self.screen_width - 3 * indicator_size - 20, 20)
-            frame_surface.blit(indicator_surface, indicator_pos)
-            
-            # Removed channel name overlay per feedback - channels should be treated like any other button press
+            # Removed playing indicator dots as per user request
             
             view_state.add_command(RenderCommand(
                 "surface", 
@@ -462,35 +437,37 @@ class ViewStateGenerator:
         icon_size = 120  # Large size for dogs to see clearly
         icon_surface = pygame.Surface((icon_size, icon_size), pygame.SRCALPHA)
         
-        # Calculate animation progress with easing
-        progress = 0
+        # Calculate size based on animation
         if feedback_state.is_animating():
             raw_progress = feedback_state.get_animation_progress()
             # Ease in and out for smoother animation
             progress = math.sin(raw_progress * math.pi / 2)
+            scale_factor = 0.8 + 0.4 * progress  # Growing effect
         else:
-            progress = 1.0
+            scale_factor = 1.2  # Full size
             
-        # Create a growing/shrinking effect
-        scale_factor = 0.8 + 0.4 * progress
         current_size = int(icon_size * scale_factor)
+        
+        # Per user request, use specific colors without tweening:
+        # Blue = Accept, Yellow = Reject
         
         # Draw appropriate icon based on feedback type
         if is_success:
-            # Draw checkmark for success
-            icon_color = YELLOW_PRIMARY
-            thickness = max(6, int(10 * progress))  # Thicker lines for visibility
+            # Accept - Use BLUE color as requested
+            icon_color = BLUE_PRIMARY
+            bg_color = BLUE_PRIMARY
+            thickness = 8  # Thicker lines for visibility
             
             # Draw circular background
             bg_radius = current_size // 2 - 5
             pygame.draw.circle(
                 icon_surface,
-                BLUE_PRIMARY,
+                bg_color,
                 (icon_size // 2, icon_size // 2),
                 bg_radius
             )
             
-            # Draw checkmark
+            # Draw checkmark in white for contrast
             start_x = icon_size // 4
             mid_x = icon_size // 2.5
             mid_y = icon_size * 3 // 4
@@ -500,7 +477,7 @@ class ViewStateGenerator:
             # Draw first line of checkmark
             pygame.draw.line(
                 icon_surface,
-                icon_color,
+                WHITE,
                 (start_x, mid_y),
                 (mid_x, mid_y),
                 thickness
@@ -509,36 +486,23 @@ class ViewStateGenerator:
             # Draw second line of checkmark
             pygame.draw.line(
                 icon_surface,
-                icon_color,
+                WHITE,
                 (mid_x, mid_y),
                 (end_x, end_y),
                 thickness
             )
             
-            # Add a glowing outline
-            glow_radius = bg_radius + 6
-            glow_alpha = int(150 * progress)
-            glow_surface = pygame.Surface((icon_size, icon_size), pygame.SRCALPHA)
-            pygame.draw.circle(
-                glow_surface,
-                (*YELLOW_PRIMARY, glow_alpha),
-                (icon_size // 2, icon_size // 2),
-                glow_radius
-            )
-            
-            # Blit glow behind the icon
-            icon_surface.blit(glow_surface, (0, 0), special_flags=pygame.BLEND_ALPHA_SDL2)
-            
         elif is_error:
-            # Draw X for error/rejection
-            icon_color = ERROR_COLOR
-            thickness = max(6, int(10 * progress))  # Thicker lines for visibility
+            # Reject - Use YELLOW color as requested
+            icon_color = YELLOW_PRIMARY
+            bg_color = YELLOW_PRIMARY
+            thickness = 8  # Thicker lines for visibility
             
             # Draw circular background
             bg_radius = current_size // 2 - 5
             pygame.draw.circle(
                 icon_surface,
-                BLUE_PRIMARY,
+                bg_color,
                 (icon_size // 2, icon_size // 2),
                 bg_radius
             )
@@ -546,10 +510,10 @@ class ViewStateGenerator:
             # Calculate X positions
             padding = icon_size // 4
             
-            # Draw first line of X
+            # Draw first line of X in black for contrast
             pygame.draw.line(
                 icon_surface,
-                icon_color,
+                (0, 0, 0),
                 (padding, padding),
                 (icon_size - padding, icon_size - padding),
                 thickness
@@ -558,27 +522,14 @@ class ViewStateGenerator:
             # Draw second line of X
             pygame.draw.line(
                 icon_surface,
-                icon_color,
+                (0, 0, 0),
                 (icon_size - padding, padding),
                 (padding, icon_size - padding),
                 thickness
             )
             
-            # Add a glowing outline for error
-            glow_radius = bg_radius + 6
-            glow_alpha = int(150 * progress)
-            glow_surface = pygame.Surface((icon_size, icon_size), pygame.SRCALPHA)
-            pygame.draw.circle(
-                glow_surface,
-                (*ERROR_COLOR, glow_alpha),
-                (icon_size // 2, icon_size // 2),
-                glow_radius
-            )
-            
-            # Blit glow behind the icon
-            icon_surface.blit(glow_surface, (0, 0), special_flags=pygame.BLEND_ALPHA_SDL2)
         else:
-            # Generic feedback - blue circle
+            # Generic feedback - use original color
             bg_radius = current_size // 2
             pygame.draw.circle(
                 icon_surface,
@@ -614,10 +565,10 @@ class ViewStateGenerator:
         # Add a whole-screen flash if animating
         if feedback_state.is_animating():
             # Create a quick flash that fades out
-            flash_alpha = int(80 * (1 - progress))  # Less intense flash
+            flash_alpha = int(80 * (1 - feedback_state.get_animation_progress()))  # Less intense flash
             
-            # Choose appropriate flash color
-            flash_color = YELLOW_PRIMARY if is_success else ERROR_COLOR if is_error else feedback_state.color
+            # Choose appropriate flash color (based on type, not tweening)
+            flash_color = BLUE_PRIMARY if is_success else YELLOW_PRIMARY if is_error else feedback_state.color
             
             flash_surface = pygame.Surface((self.screen_width, self.screen_height), pygame.SRCALPHA)
             flash_surface.fill((*flash_color, flash_alpha))

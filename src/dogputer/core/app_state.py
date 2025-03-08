@@ -3,7 +3,7 @@ import time
 import enum
 import pygame
 from dogputer.core.config import (
-    KEY_MAPPINGS, VIDEO_CHANNELS, ARROW_KEY_MAPPINGS,
+    INPUT_MAPPINGS, VIDEO_CHANNELS,
     DEFAULT_DISPLAY_TIME
 )
 
@@ -25,14 +25,45 @@ class ContentType(enum.Enum):
 class InputState:
     """Manages input state and cooldown"""
     
-    def __init__(self, cooldown=1.5):  # Increased cooldown to 1.5 seconds
+    def __init__(self, cooldown=1.5, max_cooldown=5.0):  # Base cooldown and maximum cooldown
         self.last_input_time = 0
-        self.input_cooldown = cooldown
+        self.base_cooldown = cooldown
+        self.max_cooldown = max_cooldown
+        self.input_cooldown = cooldown  # Current cooldown duration
         self.last_channel_change = 0
+        self.rejected_inputs_count = 0  # Count of rejected inputs
     
     def is_input_allowed(self):
         """Check if input is allowed based on cooldown"""
-        return time.time() - self.last_input_time >= self.input_cooldown
+        current_time = time.time()
+        time_since_last_input = current_time - self.last_input_time
+        
+        print(f"Input check: Time since last input: {time_since_last_input:.2f}s, Current cooldown: {self.input_cooldown:.2f}s")
+        
+        if time_since_last_input >= self.input_cooldown:
+            # If enough time has passed, reset cooldown to base value
+            old_cooldown = self.input_cooldown
+            self.input_cooldown = self.base_cooldown
+            self.rejected_inputs_count = 0
+            print(f"Input allowed: Resetting cooldown from {old_cooldown:.2f}s to {self.input_cooldown:.2f}s")
+            return True
+        else:
+            # If input is rejected because cooldown is active, increase cooldown
+            self.rejected_inputs_count += 1
+            
+            # Calculate new cooldown time - increases with repeated rejections
+            old_cooldown = self.input_cooldown
+            # Each rejection adds 30% to the cooldown up to max_cooldown
+            self.input_cooldown = min(
+                self.max_cooldown, 
+                self.base_cooldown * (1 + 0.3 * self.rejected_inputs_count)
+            )
+            
+            print(f"Input rejected: Rejection #{self.rejected_inputs_count}, increased cooldown from {old_cooldown:.2f}s to {self.input_cooldown:.2f}s")
+            
+            # Reset timeout based on new cooldown
+            self.last_input_time = current_time
+            return False
     
     def record_input(self):
         """Record that input was received"""
@@ -287,6 +318,7 @@ class ContentState:
         if self.video_content.video_player.play_video(video_filename):
             self.video_content.is_playing = True
             self.current_type = ContentType.VIDEO
+            print(f"ContentState: Setting current_type to VIDEO")
             return True
         return False
     
@@ -334,25 +366,55 @@ class AppState:
         # Update feedback state
         self.feedback_state.update(delta_time)
         
+        # Always sync mode with content type for consistency
+        if self.content_state.current_type == ContentType.WAITING and self.mode != Mode.WAITING:
+            print(f"Syncing state: Setting mode to WAITING to match content type")
+            self.mode = Mode.WAITING
+        elif self.content_state.current_type == ContentType.IMAGE and self.mode != Mode.IMAGE:
+            print(f"Syncing state: Setting mode to IMAGE to match content type")
+            self.mode = Mode.IMAGE
+        elif self.content_state.current_type == ContentType.VIDEO and self.mode != Mode.VIDEO:
+            print(f"Syncing state: Setting mode to VIDEO to match content type")
+            self.mode = Mode.VIDEO
+        elif self.content_state.current_type == ContentType.TEXT and self.mode != Mode.TEXT:
+            print(f"Syncing state: Setting mode to TEXT to match content type")
+            self.mode = Mode.TEXT
+        
         # Update content state
         mode_changed = self.content_state.update(delta_time)
         
         # Handle mode changes
         if mode_changed:
+            print(f"Content update triggered mode change. ContentType is now: {self.content_state.current_type}")
             if self.content_state.current_type == ContentType.WAITING:
                 self.mode = Mode.WAITING
+                print(f"Mode changed to WAITING")
             elif self.content_state.current_type == ContentType.IMAGE:
                 self.mode = Mode.IMAGE
+                print(f"Mode changed to IMAGE")
             elif self.content_state.current_type == ContentType.VIDEO:
                 self.mode = Mode.VIDEO
+                print(f"Mode changed to VIDEO")
             elif self.content_state.current_type == ContentType.TEXT:
                 self.mode = Mode.TEXT
+                print(f"Mode changed to TEXT")
     
     def handle_key_press(self, key):
         """Handle a key press event"""
+        try:
+            key_name = pygame.key.name(key)
+        except:
+            key_name = f"Unknown key ({key})"
+            
+        print(f"AppState.handle_key_press: {key_name} (code: {key})")
+        print(f"Current mode: {self.mode}")
+        print(f"Current content type: {self.content_state.current_type}")
+        
         # Check for input cooldown
         if not self.input_state.is_input_allowed():
-            self.show_feedback("Too fast! Wait a moment", (255, 255, 0))  # Yellow for rejection
+            # Show feedback with the current cooldown time
+            cooldown_time = round(self.input_state.input_cooldown, 1)
+            self.show_feedback(f"Too fast! Wait {cooldown_time}s", (255, 255, 0))  # Yellow for rejection
             print(f"Input rejected: too rapid (cooldown: {self.input_state.input_cooldown}s)")
             return
         
@@ -361,108 +423,102 @@ class AppState:
             # Just exit waiting screen, don't return - continue processing the key
             self.show_feedback("Input accepted!", (0, 0, 255))  # Blue for acceptance
             self.input_state.record_input()
+            print(f"Exiting waiting mode, processing key: {key_name}")
         
-        # Handle number keys for commands
-        if key in KEY_MAPPINGS:
-            mapping = KEY_MAPPINGS[key]
+        # Handle keys with mappings
+        if key in INPUT_MAPPINGS:
+            command = INPUT_MAPPINGS[key]
             
             # Record input
             self.input_state.record_input()
             
             # Show feedback
-            command_name = mapping.get("command", "Command")
-            self.show_feedback(f"{command_name.capitalize()} selected!", (0, 0, 255))  # Blue for acceptance
+            print(f"Command found for key {key_name}: {command}")
+            self.show_feedback(f"{command.capitalize()} selected!", (0, 0, 255))  # Blue for acceptance
             
-            # Play sound
-            if "sound" in mapping:
-                try:
-                    self.play_sound(mapping["sound"])
-                except Exception as e:
-                    print(f"Error playing sound: {e}")
+            # Play sound based on command
+            sound_file = f"{command}.wav"
+            try:
+                print(f"Playing sound: {sound_file}")
+                self.play_sound(sound_file)
+            except Exception as e:
+                print(f"Error playing sound: {e}")
             
             # Speak command using TTS
-            if "command" in mapping:
-                try:
-                    self.tts_handler.speak(mapping["command"])
-                except Exception as e:
-                    print(f"Error with TTS: {e}")
+            try:
+                print(f"Speaking command: {command}")
+                self.tts_handler.speak(command)
+            except Exception as e:
+                print(f"Error with TTS: {e}")
             
+            # Special handling for video prefixed commands
+            if command.startswith("video_"):
+                # This is handled directly in the main.py file
+                # Just record that we processed this
+                print(f"Video command detected: {command}")
+                return
+                
             # Try to play video first, fall back to image if video doesn't exist
-            if "command" in mapping:
-                # Construct video filename from command name
-                video_filename = mapping["command"] + ".mp4"
-                video_path = os.path.join("videos", video_filename)
-                video_placeholder_path = video_path + ".txt"
-                
-                # If we're already playing this video, ignore the command
-                if (self.mode == Mode.VIDEO and 
-                    self.content_state.video_content.is_playing and 
-                    hasattr(self.content_state.video_content, 'current_video_filename') and
-                    self.content_state.video_content.current_video_filename == video_filename):
-                    print(f"Already playing video: {video_filename}, ignoring repeat command")
-                    return
-                
-                # Check if video or placeholder exists
-                if os.path.exists(video_path):
-                    # Play the actual video
-                    print(f"Playing video for command: {mapping['command']}")
-                    result = self.content_state.set_video_by_filename(video_filename)
-                    if result:
-                        self.mode = Mode.VIDEO
-                        # Store the current video filename for repeat detection
-                        self.content_state.video_content.current_video_filename = video_filename
-                    else:
-                        # Fall back to image if video playback fails
-                        self._display_image_fallback(mapping)
-                elif os.path.exists(video_placeholder_path):
-                    # If we have a placeholder, display the image with a message
-                    print(f"Video placeholder found for command: {mapping['command']}, displaying image instead")
-                    self._display_image_fallback(mapping)
-                    # Show feedback about placeholder
-                    self.show_feedback("Video placeholder - using image instead", (0, 0, 255))
-                else:
-                    # Fall back to image
-                    self._display_image_fallback(mapping)
-            elif "image" in mapping:
-                # Just use the image directly if no command is specified
-                self._display_image_fallback(mapping)
-        
-        # Handle arrow keys for video channels
-        elif key in ARROW_KEY_MAPPINGS:
-            # Record input
-            self.input_state.record_input()
+            # Construct video filename from command
+            video_filename = command + ".mp4"
+            video_path = os.path.join("videos", video_filename)
+            video_placeholder_path = video_path + ".txt"
             
-            channel_index = ARROW_KEY_MAPPINGS[key]
-            if 0 <= channel_index < len(VIDEO_CHANNELS):
-                channel = VIDEO_CHANNELS[channel_index]
-                print(f"Switched to channel: {channel['name']}")
-                
-                # Show feedback
-                self.show_feedback(f"Channel: {channel['name']}", (0, 0, 255))  # Blue for acceptance
-                
-                # Speak the channel name
-                self.tts_handler.speak(channel['name'])
-                
-                # Play the video
-                result = self.content_state.set_video(channel_index)
-                if isinstance(result, tuple):
-                    success, channel_name = result
-                    if not success and channel_name:
-                        # Display channel name as text
-                        self.content_state.set_text(f"Channel: {channel_name}", self.font, 3.0, self.screen_width, self.screen_height)
-                        self.mode = Mode.TEXT
-                elif result:
+            # If we're already playing this video, ignore the command
+            if (self.mode == Mode.VIDEO and 
+                self.content_state.video_content.is_playing and 
+                hasattr(self.content_state.video_content, 'current_video_filename') and
+                self.content_state.video_content.current_video_filename == video_filename):
+                print(f"Already playing video: {video_filename}, ignoring repeat command")
+                return
+            
+            # Check if video or placeholder exists
+            if os.path.exists(video_path):
+                # Play the actual video
+                print(f"Playing video for command: {command} (path: {video_path})")
+                result = self.content_state.set_video_by_filename(video_filename)
+                if result:
+                    print(f"Video playback started successfully, switching to VIDEO mode")
                     self.mode = Mode.VIDEO
+                    # Store the current video filename for repeat detection
+                    self.content_state.video_content.current_video_filename = video_filename
+                else:
+                    # Fall back to image if video playback fails
+                    print(f"Video playback failed, falling back to image")
+                    image_name = f"{command}.jpg"
+                    self._display_image_fallback({"image": image_name, "display_time": DEFAULT_DISPLAY_TIME})
+            elif os.path.exists(video_placeholder_path):
+                # If we have a placeholder, display the image with a message
+                print(f"Video placeholder found for command: {command}, displaying image instead")
+                image_name = f"{command}.jpg"
+                self._display_image_fallback({"image": image_name, "display_time": DEFAULT_DISPLAY_TIME})
+                # Show feedback about placeholder
+                self.show_feedback("Video placeholder - using image instead", (0, 0, 255))
+            else:
+                # Fall back to image
+                image_name = f"{command}.jpg"
+                self._display_image_fallback({"image": image_name, "display_time": DEFAULT_DISPLAY_TIME})
+        
+        # No key mapping found - this is handled as part of input_mappings now
+        else:
+            # This can happen if a key is pressed that isn't mapped
+            print(f"No mapping found for key: {key_name}")
     
     def _display_image_fallback(self, mapping):
         """Display image as fallback when video is not available"""
         if "image" in mapping:
             # Load and display the image
-            image = self.load_image(mapping["image"])
+            image_name = mapping["image"]
+            print(f"Loading image fallback: {image_name}")
+            image = self.load_image(image_name)
             if image:
                 display_time = mapping.get("display_time", DEFAULT_DISPLAY_TIME)
+                print(f"Image loaded successfully, displaying for {display_time} seconds, switching to IMAGE mode")
                 self.content_state.set_image(image, display_time)
                 self.mode = Mode.IMAGE
+            else:
+                print(f"Failed to load image: {image_name}")
+                self.show_feedback(f"Failed to load image: {image_name}", (255, 0, 0))  # Red for error
     
     def handle_joystick(self, joystick):
         """Handle joystick input"""
@@ -507,7 +563,9 @@ class AppState:
         """Change the video channel"""
         # Prevent rapid channel changes
         if not self.input_state.is_channel_change_allowed():
-            self.show_feedback("Too fast! Wait a moment", (255, 255, 0))  # Yellow for rejection
+            # Show feedback with current cooldown time similar to key presses
+            cooldown_time = round(1.5, 1)  # Using the hardcoded 1.5s for channel changes
+            self.show_feedback(f"Too fast! Wait {cooldown_time}s", (255, 255, 0))  # Yellow for rejection
             return
         
         # Record channel change

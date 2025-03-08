@@ -22,11 +22,30 @@ def main():
     if args.list_configs:
         print("Available configurations:")
         print("  - development (default): Number keys 0-9 and arrow keys")
-        print("  - x-arcade: X-Arcade joystick and buttons")
+        print("  - x-arcade-kb: X-Arcade in keyboard mode")
+        print("  - x-arcade-gc: X-Arcade in gamepad/controller mode")
         return
     
+    # Get the config name
+    config_name = args.config
+    
+    # If the config is x-arcade, autodetect gamepad/keyboard mode
+    if config_name == 'x-arcade':
+        import pygame
+        pygame.init()  # Initialize pygame to check for joysticks
+        
+        # Check if joysticks are available
+        if pygame.joystick.get_count() > 0:
+            print("X-Arcade gamepad detected, using gamepad configuration")
+            config_name = 'x-arcade-gc'
+        else:
+            print("No gamepad detected, using X-Arcade keyboard configuration")
+            config_name = 'x-arcade-kb'
+        
+        pygame.quit()  # Clean up pygame resources for now
+    
     # Load the specified configuration
-    config = load_config(args.config)
+    config = load_config(config_name)
     
     # Initialize and run the application
     app = DogPuter(config=config)

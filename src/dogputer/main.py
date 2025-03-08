@@ -5,7 +5,7 @@ import time
 import math
 import random
 from dogputer.core.config import (
-    KEY_MAPPINGS, VIDEO_CHANNELS, ARROW_KEY_MAPPINGS,
+    INPUT_MAPPINGS, VIDEO_CHANNELS,
     SCREEN_WIDTH, SCREEN_HEIGHT, BACKGROUND_COLOR, DEFAULT_DISPLAY_TIME,
     BLUE_PRIMARY, YELLOW_PRIMARY, WHITE, LIGHT_BLUE, CREAM,
     SUCCESS_COLOR, ALERT_COLOR, ERROR_COLOR, PAW_CURSOR_SIZE
@@ -47,11 +47,8 @@ class DogPuter:
         self.input_config = {
             'input_type': 'composite',
             'use_joystick': True,
-            'use_xarcade': 'xarcade_mappings' in self.config
+            'input_mappings': INPUT_MAPPINGS
         }
-        
-        if 'xarcade_mappings' in self.config:
-            self.input_config['xarcade_mappings'] = self.config.get('xarcade_mappings')
             
         from dogputer.io.input_handler import create_input_handler
         self.input_handler = create_input_handler(self.input_config)
@@ -174,6 +171,16 @@ class DogPuter:
             # Calculate delta time
             delta_time = clock.tick(60) / 1000.0  # Convert to seconds
             
+            # Get accepted keys from config (if available)
+            accepted_keys_strings = self.config.get('accepted_keys', [])
+            accepted_keys = []
+            
+            # Convert key strings to pygame key constants
+            for key_str in accepted_keys_strings:
+                key_constant = getattr(pygame, key_str, None)
+                if key_constant is not None:
+                    accepted_keys.append(key_constant)
+            
             # Process input events
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -182,7 +189,8 @@ class DogPuter:
                     # Exit on ESC key
                     if event.key == pygame.K_ESCAPE:
                         running = False
-                    else:
+                    # Only process keys in our accepted list if we have one
+                    elif not accepted_keys or event.key in accepted_keys:
                         # Create particles on key press for visual feedback
                         x = random.randint(self.screen_width//3, 2*self.screen_width//3)
                         y = random.randint(self.screen_height//3, 2*self.screen_height//3)
@@ -192,23 +200,38 @@ class DogPuter:
                     # Handle joystick button press as input
                     self.app_state.handle_key_press(pygame.K_SPACE)  # Treat as space key
             
-            # Process events from input handler
+            # Update input handler
             self.input_handler.update()
+            
+            # Process the events from our input handler
             events = self.input_handler.get_events()
-            
-            # Process arrow keys and other input from active handlers
-            for key, channel_index in ARROW_KEY_MAPPINGS.items():
-                if self.input_handler.is_key_pressed(key):
-                    if channel_index < len(VIDEO_CHANNELS):
-                        # Check if the key is in the arrow key mappings
-                        self.app_state.handle_key_press(key)
-                        break
-            
-            # Process key mappings for sounds and images
-            for key, action in KEY_MAPPINGS.items():
-                if self.input_handler.is_key_pressed(key):
-                    self.app_state.handle_key_press(key)
-                    break
+            for event in events:
+                if event.type == pygame.KEYDOWN:
+                    # Only process keys that are in our accepted list if we have one
+                    if not accepted_keys or event.key in accepted_keys:
+                        # Create particles on key press for visual feedback
+                        x = random.randint(self.screen_width//3, 2*self.screen_width//3)
+                        y = random.randint(self.screen_height//3, 2*self.screen_height//3)
+                        self.particle_system.create_burst(x, y, count=15, color=YELLOW_PRIMARY)
+                        
+                        # Handle the keypress once when the key is pressed down
+                        key_name = pygame.key.name(event.key)
+                        print(f"Key pressed: {key_name} (code: {event.key})")
+                        
+                        if event.key in INPUT_MAPPINGS:
+                            # Process mapped key
+                            command = INPUT_MAPPINGS[event.key]
+                            print(f"Found mapping for key {key_name}: {command}")
+                            
+                            # Handle video commands differently
+                            if command.startswith("video_"):
+                                # Extract channel from video_ prefix
+                                video_name = command[6:] # Remove "video_" prefix
+                                print(f"Selecting video: {video_name}")
+                            
+                            self.app_state.handle_key_press(event.key)
+                        else:
+                            print(f"No mapping found for key {key_name}")
             
             # Update state
             self.app_state.update(delta_time)

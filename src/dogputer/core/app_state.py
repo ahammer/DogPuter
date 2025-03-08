@@ -184,11 +184,12 @@ class WaitingScreenContent:
 class FeedbackState:
     """Manages feedback state"""
     
-    def __init__(self, duration=0.5, animation_duration=0.1):
+    def __init__(self, duration=None, animation_duration=0.2):
+        from dogputer.core.config import FEEDBACK_DURATION
         self.message = ""
         self.color = (0, 0, 255)  # Blue by default
         self.start_time = 0
-        self.duration = duration
+        self.duration = duration if duration is not None else FEEDBACK_DURATION
         self.animation_start_time = 0
         self.animation_duration = animation_duration
         self.is_active = False

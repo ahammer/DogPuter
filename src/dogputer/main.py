@@ -3,16 +3,20 @@ import os
 import sys
 import time
 import math
+import random
 from dogputer.core.config import (
     KEY_MAPPINGS, VIDEO_CHANNELS, ARROW_KEY_MAPPINGS,
-    SCREEN_WIDTH, SCREEN_HEIGHT, BACKGROUND_COLOR, DEFAULT_DISPLAY_TIME
+    SCREEN_WIDTH, SCREEN_HEIGHT, BACKGROUND_COLOR, DEFAULT_DISPLAY_TIME,
+    BLUE_PRIMARY, YELLOW_PRIMARY, WHITE, LIGHT_BLUE, CREAM,
+    SUCCESS_COLOR, ALERT_COLOR, ERROR_COLOR, PAW_CURSOR_SIZE
 )
 from dogputer.ui.video_player import VideoPlayer
 from dogputer.core.tts_handler import TTSHandler
-from dogputer.core.app_state import AppState
+from dogputer.core.app_state import AppState, Mode
 from dogputer.ui.view_state import ViewStateGenerator
 from dogputer.ui.renderer import Renderer
 from dogputer.ui.animation import AnimationSystem, EasingFunctions
+from dogputer.ui.particle_system import ParticleSystem
 
 class DogPuter:
     def __init__(self):
@@ -80,30 +84,58 @@ class DogPuter:
         # Initialize animation system
         self.animation_system = AnimationSystem()
         
+        # Initialize particle system
+        self.particle_system = ParticleSystem(self.screen_width, self.screen_height)
+        
         # Override methods in app_state to use our implementations
         self.app_state.load_image = self.load_image
         self.app_state.play_sound = self.play_sound
 
     def create_paw_cursor(self):
-        """Create a simple paw cursor for the waiting screen"""
-        size = 80
+        """Create an enhanced paw cursor for the waiting screen that's more visible to dogs"""
+        size = PAW_CURSOR_SIZE  # Larger size from config
         surface = pygame.Surface((size, size), pygame.SRCALPHA)
         
-        # Draw paw pad (main circle)
-        pygame.draw.circle(surface, (200, 200, 200), (size//2, size//2), size//3)
+        # Draw paw pad (main circle) with dog-friendly color
+        pad_color = YELLOW_PRIMARY  # Dog-friendly yellow for high visibility
+        outline_color = BLUE_PRIMARY  # Contrasting color for outline
+        
+        # Add a subtle glow effect
+        glow_radius = size//2 + 10
+        glow_surface = pygame.Surface((size + 20, size + 20), pygame.SRCALPHA)
+        for radius in range(glow_radius, glow_radius - 10, -2):
+            alpha = 100 - (glow_radius - radius) * 10
+            pygame.draw.circle(
+                glow_surface, 
+                (*YELLOW_PRIMARY, alpha), 
+                (size//2 + 10, size//2 + 10), 
+                radius
+            )
+        
+        # Draw main pad with outline
+        pad_radius = size//3
+        pygame.draw.circle(surface, outline_color, (size//2, size//2), pad_radius + 3)  # Outline
+        pygame.draw.circle(surface, pad_color, (size//2, size//2), pad_radius)  # Main pad
         
         # Draw toe pads (smaller circles)
         pad_positions = [
-            (size//2, size//4),  # Top
-            (size//4, size//2),  # Left
-            (3*size//4, size//2),  # Right
-            (size//2, 3*size//4)  # Bottom
+            (size//2, size//4),      # Top
+            (size//4, size//2),      # Left
+            (3*size//4, size//2),    # Right
+            (size//2, 3*size//4)     # Bottom
         ]
         
+        toe_radius = size//6
         for pos in pad_positions:
-            pygame.draw.circle(surface, (200, 200, 200), pos, size//6)
+            pygame.draw.circle(surface, outline_color, pos, toe_radius + 2)  # Outline
+            pygame.draw.circle(surface, pad_color, pos, toe_radius)  # Toe pad
+        
+        # Combine the glow and the paw
+        final_surface = pygame.Surface((size + 20, size + 20), pygame.SRCALPHA)
+        final_surface.blit(glow_surface, (0, 0))
+        final_surface.blit(surface, (10, 10))
             
-        return surface
+        return final_surface
         
     def load_image(self, image_name):
         """Load an image from the images directory"""
@@ -142,6 +174,10 @@ class DogPuter:
                     if event.key == pygame.K_ESCAPE:
                         running = False
                     else:
+                        # Create particles on key press for visual feedback
+                        x = random.randint(self.screen_width//3, 2*self.screen_width//3)
+                        y = random.randint(self.screen_height//3, 2*self.screen_height//3)
+                        self.particle_system.create_burst(x, y, count=15, color=YELLOW_PRIMARY)
                         self.app_state.handle_key_press(event.key)
                 elif event.type == pygame.JOYBUTTONDOWN:
                     # Handle joystick button press as input
@@ -157,11 +193,23 @@ class DogPuter:
             # Update animations
             self.animation_system.update_animations(delta_time)
             
+            # Update particle system
+            self.particle_system.update(delta_time)
+            
+            # Create ambient particles in waiting mode
+            if self.app_state.mode == Mode.WAITING:
+                # Add ambient particles occasionally
+                if random.random() < 0.05:  # 5% chance each frame
+                    self.particle_system.create_ambient(count=2, color=YELLOW_PRIMARY)
+            
             # Generate view state
             view_state = self.view_state_generator.generate_view_state(self.app_state)
             
             # Render view state
             self.renderer.render(view_state)
+            
+            # Draw particles on top
+            self.particle_system.draw(self.screen)
             
             # Update display
             pygame.display.flip()

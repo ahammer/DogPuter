@@ -37,10 +37,23 @@ class VideoPlayer:
         os.makedirs(self.videos_dir, exist_ok=True)
     
     def play_video(self, video_file):
-        """Play a video file"""
+        """Play a video file or handle placeholder text files"""
         try:
+            video_path = os.path.join(self.videos_dir, video_file)
+            
+            # Check if the file is a placeholder text file
+            if os.path.exists(video_path + ".txt"):
+                # It's a placeholder text file, read its content
+                with open(video_path + ".txt", "r") as f:
+                    placeholder_text = f.read().strip()
+                
+                # Create a text frame to display
+                self._create_text_frame(placeholder_text, video_file)
+                print(f"Displaying placeholder for video: {video_file}")
+                return True
+                
             # If a video is already playing, start a transition
-            if self.current_video:
+            elif self.current_video:
                 # Store the current frame for transition
                 current_time = time.time() - self.start_time
                 if current_time > self.current_video.duration:
@@ -59,14 +72,12 @@ class VideoPlayer:
                 self.transition_start_time = time.time()
                 
                 # Load the new video but don't start playing yet
-                video_path = os.path.join(self.videos_dir, video_file)
                 self.next_video = VideoFileClip(video_path)
                 
                 print(f"Transitioning to video: {video_file}")
                 return True
             else:
                 # No video playing, just start the new one
-                video_path = os.path.join(self.videos_dir, video_file)
                 self.current_video = VideoFileClip(video_path)
                 
                 # Set up the video surface
@@ -119,8 +130,45 @@ class VideoPlayer:
         else:
             self.pause()
     
+    def _create_text_frame(self, text, title):
+        """Create a frame with text for placeholder videos"""
+        # Create a surface for the text frame
+        surface = pygame.Surface((self.screen.get_width(), self.screen.get_height()))
+        surface.fill((30, 30, 30))  # Dark gray background
+        
+        # Create a font for the title and text
+        title_font = pygame.font.SysFont(None, 48)
+        text_font = pygame.font.SysFont(None, 36)
+        
+        # Render the title
+        title_text = title_font.render(f"Channel: {title.replace('.mp4', '')}", True, (255, 255, 255))
+        title_rect = title_text.get_rect(center=(self.screen.get_width()/2, 100))
+        surface.blit(title_text, title_rect)
+        
+        # Render the placeholder text
+        lines = text.split('\n')
+        y_pos = 200
+        for line in lines:
+            if line.strip():  # Skip empty lines
+                text_surface = text_font.render(line, True, (200, 200, 200))
+                text_rect = text_surface.get_rect(center=(self.screen.get_width()/2, y_pos))
+                surface.blit(text_surface, text_rect)
+                y_pos += 40
+        
+        # Store this as our "video" frame
+        self.video_surface = surface
+        self.start_time = time.time()
+        
+        # Set a fake duration
+        self.current_video = None
+        
+        return surface
+        
     def update(self):
         """Update the video frame"""
+        # If we're displaying a text placeholder, just return the surface
+        if self.current_video is None and self.video_surface is not None:
+            return self.video_surface
         # Handle transition between videos
         if self.in_transition:
             transition_time = time.time() - self.transition_start_time

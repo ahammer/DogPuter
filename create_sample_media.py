@@ -134,24 +134,24 @@ def main():
 
 def generate_prompt_for_key(key_name):
     """Generate a detailed prompt for DALL-E based on the key name"""
-    # Base template for cartoon-style images with dog-friendly colors
-    base_template = "Create a friendly, cartoon-style illustration for children that is also optimized for dog vision. Use a simple, clear design with bold outlines and predominantly blue and yellow for important elements, though some red and green can be included. The image should be cute and appealing, not abstract or overly stylized."
+    # Base template for photo-realistic images from a dog's perspective
+    base_template = "Create a photo-realistic image from a dog's perspective. The image should be taken from a low angle, as if seen through the eyes of a dog, with a slight wide-angle distortion. Colors should be slightly muted in the red-green spectrum to simulate dog vision, with blues and yellows more prominent."
     
     prompts = {
-        "Play": f"{base_template} Draw a happy cartoon dog playing with a toy, with blue and yellow highlights. The scene should clearly communicate 'play time' in a way that's easy for both children and dogs to understand.",
-        "Rope": f"{base_template} Draw a cartoon-style dog rope toy with blue and yellow colors and clear knots on both ends. Make it look fun and appealing for a children's app, while being recognizable to dogs.",
-        "Ball": f"{base_template} Draw a cartoon-style ball for dogs, with blue and yellow patterns. Make it look bouncy and fun in a children's illustration style, while being instantly recognizable to dogs.",
-        "Treat": f"{base_template} Draw a cartoon-style dog bone or treat with blue and yellow highlights. Make it look appetizing and fun in a children's illustration style, while being instantly recognizable to dogs.",
-        "Outside": f"{base_template} Draw a simple, cartoon-style outdoor scene with a tree, sun, and grass. Use blue for the sky and yellow for the sun to make these elements pop for dogs, while keeping the overall style appropriate for children.",
-        "Walk": f"{base_template} Draw a cartoon-style dog leash or a simple path in a park that suggests it's time for a walk. Use blue and yellow for important elements to make them stand out for dogs, while keeping the style fun for children.",
-        "Water": f"{base_template} Draw a cartoon-style water bowl or water dish for dogs with blue water. Make it look refreshing and appealing in a children's illustration style, while being instantly recognizable to dogs.",
-        "Food": f"{base_template} Draw a cartoon-style dog food bowl filled with kibble. Use blue for the bowl and yellow/brown for the food to make it stand out for dogs, while keeping the style appropriate for children.",
-        "Toy": f"{base_template} Draw a cartoon-style collection of dog toys (like a stuffed animal or squeaky toy) with blue and yellow elements. Make them look fun and appealing in a children's illustration style.",
-        "Bed": f"{base_template} Draw a cartoon-style cozy dog bed or sleeping area. Use blue and yellow for the bed to make it stand out for dogs, while keeping the overall style cute and appropriate for children."
+        "Play": f"{base_template} Photo of a play area from a dog's perspective, looking up at a human holding a toy, ready to play. The scene should be bright and exciting, capturing the anticipation of playtime.",
+        "Rope": f"{base_template} Photo of a rope toy from a dog's perspective, lying on the ground just in front of the dog's paws. The rope should be colorful and appear slightly larger than life, as if the dog is focusing intently on it.",
+        "Ball": f"{base_template} Photo of a tennis ball from a dog's perspective, sitting on grass with the dog's paw partially visible in the frame. The ball should be the main focus, appearing slightly larger as the dog fixates on it.",
+        "Hugs": f"{base_template} Photo of a human hugging a dog from the dog's perspective, showing the human's arms wrapped around and the human's face close by, conveying warmth and affection. The image should capture the intimate, comforting feeling of being hugged.",
+        "Outside": f"{base_template} Photo of a backyard or garden from a dog's perspective, with the door just opening and bright daylight streaming in. The outdoor scene should look vast and exciting from the low angle of a dog.",
+        "Walk": f"{base_template} Photo of a walking path from a dog's perspective, with a leash visible extending from the frame to a human hand. The path should stretch ahead invitingly, with interesting elements like trees or other dogs visible in the distance.",
+        "Water": f"{base_template} Photo of a water bowl from a dog's perspective, with the water surface reflecting light and appearing refreshing. The bowl should be positioned as if the dog is about to drink from it.",
+        "Park": f"{base_template} Photo of a dog park from a dog's perspective, showing other dogs playing in the distance and open space to run. The image should capture the excitement and freedom of being at the park.",
+        "Toy": f"{base_template} Photo of a collection of dog toys from a dog's perspective, scattered on the floor with one toy prominently in focus in the foreground. The toys should appear enticing and ready to be played with.",
+        "Bed": f"{base_template} Photo of a cozy dog bed from a dog's perspective, looking at it from a slight distance as if considering whether to go lie down. The bed should look soft, warm and inviting."
     }
     
     # Get the prompt for the key name, or use a generic one if not found
-    return prompts.get(key_name, f"{base_template} Draw a simple, cartoon-style illustration representing the concept of '{key_name}' that would appeal to both children and dogs, with blue and yellow highlights for dog visibility.")
+    return prompts.get(key_name, f"{base_template} Photo of the concept of '{key_name}' from a dog's perspective, showing what a dog would see when encountering this object or situation.")
 
 if __name__ == "__main__":
     main()

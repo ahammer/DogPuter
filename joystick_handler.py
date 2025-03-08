@@ -3,6 +3,7 @@
 Joystick handler for DogPuter
 This script maps a GPIO-based joystick to events that the main DogPuter application can process.
 It's useful for DIY joysticks or when using analog joysticks connected via ADC.
+Includes input cooldown to prevent rapid joystick movements.
 """
 
 from gpiozero import MCP3008
@@ -25,6 +26,10 @@ JOYSTICK_BUTTON_PIN = 25
 JOYSTICK_DEADZONE = 0.1  # Ignore small movements
 JOYSTICK_THRESHOLD = 0.5  # Threshold for registering a direction change
 
+# Input cooldown settings
+INPUT_COOLDOWN = 0.5  # seconds between allowed joystick movements
+BUTTON_COOLDOWN = 0.5  # seconds between allowed button presses
+
 def main():
     """Main function to run the joystick handler"""
     # Initialize pygame
@@ -45,8 +50,22 @@ def main():
             from gpiozero import Button
             joystick_button = Button(JOYSTICK_BUTTON_PIN, pull_up=True)
             
+            # Track last button press time for cooldown
+            last_button_time = 0
+            
             def button_pressed():
-                # You can map this to any key or action
+                nonlocal last_button_time
+                current_time = time.time()
+                
+                # Check for button cooldown
+                if current_time - last_button_time < BUTTON_COOLDOWN:
+                    print("Joystick button press ignored (cooldown active)")
+                    return
+                    
+                # Update last button press time
+                last_button_time = current_time
+                
+                # Send key event
                 event = pygame.event.Event(pygame.KEYDOWN, {"key": pygame.K_SPACE})
                 pygame.event.post(event)
                 print("Joystick button pressed")
@@ -57,11 +76,14 @@ def main():
             print(f"Error initializing joystick button: {e}")
             joystick_button = None
         
-        print("Joystick handler running. Press Ctrl+C to exit.")
+        print(f"Joystick handler running with {INPUT_COOLDOWN}s cooldown. Press Ctrl+C to exit.")
         
         # Track joystick state to detect changes
         last_x_direction = 0  # -1: left, 0: center, 1: right
         last_y_direction = 0  # -1: up, 0: center, 1: down
+        
+        # Track last direction change time for cooldown
+        last_direction_time = 0
         
         # Main loop
         while True:
@@ -89,35 +111,52 @@ def main():
             elif y_value < -JOYSTICK_THRESHOLD:
                 y_direction = -1  # up (y-axis is inverted)
             
-            # Check for direction changes
-            if x_direction != last_x_direction:
-                if x_direction == 1:
-                    # Right movement
-                    event = pygame.event.Event(pygame.JOYAXISMOTION, {"joy": 0, "axis": 0, "value": 1.0})
-                    pygame.event.post(event)
-                    print("Joystick moved right")
-                elif x_direction == -1:
-                    # Left movement
-                    event = pygame.event.Event(pygame.JOYAXISMOTION, {"joy": 0, "axis": 0, "value": -1.0})
-                    pygame.event.post(event)
-                    print("Joystick moved left")
-                last_x_direction = x_direction
+            # Get current time for cooldown check
+            current_time = time.time()
             
-            if y_direction != last_y_direction:
-                if y_direction == 1:
-                    # Down movement
-                    event = pygame.event.Event(pygame.JOYAXISMOTION, {"joy": 0, "axis": 1, "value": 1.0})
-                    pygame.event.post(event)
-                    print("Joystick moved down")
-                elif y_direction == -1:
-                    # Up movement
-                    event = pygame.event.Event(pygame.JOYAXISMOTION, {"joy": 0, "axis": 1, "value": -1.0})
-                    pygame.event.post(event)
-                    print("Joystick moved up")
-                last_y_direction = y_direction
+            # Check for direction changes with cooldown
+            direction_changed = False
+            
+            if x_direction != last_x_direction or y_direction != last_y_direction:
+                # Check cooldown before processing direction change
+                if current_time - last_direction_time < INPUT_COOLDOWN:
+                    # Skip this update if cooldown is active
+                    pass
+                else:
+                    direction_changed = True
+                    last_direction_time = current_time
+                    
+                    # Process X direction change
+                    if x_direction != last_x_direction:
+                        if x_direction == 1:
+                            # Right movement
+                            event = pygame.event.Event(pygame.JOYAXISMOTION, {"joy": 0, "axis": 0, "value": 1.0})
+                            pygame.event.post(event)
+                            print("Joystick moved right")
+                        elif x_direction == -1:
+                            # Left movement
+                            event = pygame.event.Event(pygame.JOYAXISMOTION, {"joy": 0, "axis": 0, "value": -1.0})
+                            pygame.event.post(event)
+                            print("Joystick moved left")
+                        last_x_direction = x_direction
+                    
+                    # Process Y direction change
+                    if y_direction != last_y_direction:
+                        if y_direction == 1:
+                            # Down movement
+                            event = pygame.event.Event(pygame.JOYAXISMOTION, {"joy": 0, "axis": 1, "value": 1.0})
+                            pygame.event.post(event)
+                            print("Joystick moved down")
+                        elif y_direction == -1:
+                            # Up movement
+                            event = pygame.event.Event(pygame.JOYAXISMOTION, {"joy": 0, "axis": 1, "value": -1.0})
+                            pygame.event.post(event)
+                            print("Joystick moved up")
+                        last_y_direction = y_direction
             
             # Sleep to avoid using too much CPU
-            time.sleep(0.1)
+            # Shorter sleep time for more responsive input
+            time.sleep(0.05)
             
     except KeyboardInterrupt:
         print("Joystick handler stopped.")

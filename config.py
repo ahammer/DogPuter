@@ -6,11 +6,11 @@ KEY_MAPPINGS = {
     pygame.K_0: {"sound": "play.wav", "image": "play.jpg", "display_time": 5, "command": "play"},
     pygame.K_1: {"sound": "rope.wav", "image": "rope.jpg", "display_time": 5, "command": "rope"},
     pygame.K_2: {"sound": "ball.wav", "image": "ball.jpg", "display_time": 5, "command": "ball"},
-    pygame.K_3: {"sound": "treat.wav", "image": "treat.jpg", "display_time": 5, "command": "treat"},
+    pygame.K_3: {"sound": "hugs.wav", "image": "hugs.jpg", "display_time": 5, "command": "hugs"},
     pygame.K_4: {"sound": "outside.wav", "image": "outside.jpg", "display_time": 5, "command": "outside"},
     pygame.K_5: {"sound": "walk.wav", "image": "walk.jpg", "display_time": 5, "command": "walk"},
     pygame.K_6: {"sound": "water.wav", "image": "water.jpg", "display_time": 5, "command": "water"},
-    pygame.K_7: {"sound": "food.wav", "image": "food.jpg", "display_time": 5, "command": "food"},
+    pygame.K_7: {"sound": "park.wav", "image": "park.jpg", "display_time": 5, "command": "park"},
     pygame.K_8: {"sound": "toy.wav", "image": "toy.jpg", "display_time": 5, "command": "toy"},
     pygame.K_9: {"sound": "bed.wav", "image": "bed.jpg", "display_time": 5, "command": "bed"},
 }

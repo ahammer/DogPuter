@@ -1,2 +1,2 @@
-Placeholder for Squirrels video
-In a real setup, you would place an actual video file here.
+Placeholder for video that would be created from the image
+This would be a 5.0-second video with a slight zoom effect.

@@ -1,3 +1,4 @@
+import os
 import time
 import enum
 import pygame
@@ -262,7 +263,7 @@ class ContentState:
         self.current_type = ContentType.IMAGE
     
     def set_video(self, channel_index):
-        """Set video content"""
+        """Set video content by channel index"""
         success, channel_name = self.video_content.play_channel(channel_index)
         if success:
             self.current_type = ContentType.VIDEO
@@ -271,6 +272,14 @@ class ContentState:
             # We need to pass the font from AppState, so we'll return False and let AppState handle it
             return False, channel_name
         return False, None
+    
+    def set_video_by_filename(self, video_filename):
+        """Set video content by filename"""
+        if self.video_content.video_player.play_video(video_filename):
+            self.video_content.is_playing = True
+            self.current_type = ContentType.VIDEO
+            return True
+        return False
     
     def set_text(self, text, font=None, display_time=3.0, screen_width=800, screen_height=600):
         """Set text content"""
@@ -369,14 +378,35 @@ class AppState:
                 except Exception as e:
                     print(f"Error with TTS: {e}")
             
-            # Display image
-            if "image" in mapping:
-                # Load and display the image
-                image = self.load_image(mapping["image"])
-                if image:
-                    display_time = mapping.get("display_time", DEFAULT_DISPLAY_TIME)
-                    self.content_state.set_image(image, display_time)
-                    self.mode = Mode.IMAGE
+            # Try to play video first, fall back to image if video doesn't exist
+            if "command" in mapping:
+                # Construct video filename from command name
+                video_filename = mapping["command"] + ".mp4"
+                video_path = os.path.join("videos", video_filename)
+                video_placeholder_path = video_path + ".txt"
+                
+                # Check if video or placeholder exists
+                if os.path.exists(video_path):
+                    # Play the actual video
+                    print(f"Playing video for command: {mapping['command']}")
+                    result = self.content_state.set_video_by_filename(video_filename)
+                    if result:
+                        self.mode = Mode.VIDEO
+                    else:
+                        # Fall back to image if video playback fails
+                        self._display_image_fallback(mapping)
+                elif os.path.exists(video_placeholder_path):
+                    # If we have a placeholder, display the image with a message
+                    print(f"Video placeholder found for command: {mapping['command']}, displaying image instead")
+                    self._display_image_fallback(mapping)
+                    # Show feedback about placeholder
+                    self.show_feedback("Video placeholder - using image instead", (0, 0, 255))
+                else:
+                    # Fall back to image
+                    self._display_image_fallback(mapping)
+            elif "image" in mapping:
+                # Just use the image directly if no command is specified
+                self._display_image_fallback(mapping)
         
         # Handle arrow keys for video channels
         elif key in ARROW_KEY_MAPPINGS:
@@ -404,6 +434,16 @@ class AppState:
                         self.mode = Mode.TEXT
                 elif result:
                     self.mode = Mode.VIDEO
+    
+    def _display_image_fallback(self, mapping):
+        """Display image as fallback when video is not available"""
+        if "image" in mapping:
+            # Load and display the image
+            image = self.load_image(mapping["image"])
+            if image:
+                display_time = mapping.get("display_time", DEFAULT_DISPLAY_TIME)
+                self.content_state.set_image(image, display_time)
+                self.mode = Mode.IMAGE
     
     def handle_joystick(self, joystick):
         """Handle joystick input"""

@@ -40,55 +40,62 @@ class VideoPlayer:
         """Play a video file or handle placeholder text files"""
         try:
             video_path = os.path.join(self.videos_dir, video_file)
+            placeholder_path = video_path + ".txt"
             
             # Check if the file is a placeholder text file
-            if os.path.exists(video_path + ".txt"):
+            if os.path.exists(placeholder_path):
                 # It's a placeholder text file, read its content
-                with open(video_path + ".txt", "r") as f:
+                with open(placeholder_path, "r") as f:
                     placeholder_text = f.read().strip()
                 
                 # Create a text frame to display
                 self._create_text_frame(placeholder_text, video_file)
                 print(f"Displaying placeholder for video: {video_file}")
                 return True
-                
-            # If a video is already playing, start a transition
-            elif self.current_video:
-                # Store the current frame for transition
-                current_time = time.time() - self.start_time
-                if current_time > self.current_video.duration:
-                    current_time = 0
-                try:
-                    frame = self.current_video.get_frame(current_time)
-                    frame_surface = pygame.surfarray.make_surface(frame.swapaxes(0, 1))
-                    frame_surface = pygame.transform.scale(frame_surface, 
-                                                         (self.screen.get_width(), self.screen.get_height()))
-                    self.previous_frame = frame_surface
-                except Exception:
-                    self.previous_frame = None
-                
-                # Set up transition
-                self.in_transition = True
-                self.transition_start_time = time.time()
-                
-                # Load the new video but don't start playing yet
-                self.next_video = VideoFileClip(video_path)
-                
-                print(f"Transitioning to video: {video_file}")
-                return True
+            
+            # Check if the actual video file exists
+            elif os.path.exists(video_path):
+                # If a video is already playing, start a transition
+                if self.current_video:
+                    # Store the current frame for transition
+                    current_time = time.time() - self.start_time
+                    if current_time > self.current_video.duration:
+                        current_time = 0
+                    try:
+                        frame = self.current_video.get_frame(current_time)
+                        frame_surface = pygame.surfarray.make_surface(frame.swapaxes(0, 1))
+                        frame_surface = pygame.transform.scale(frame_surface, 
+                                                             (self.screen.get_width(), self.screen.get_height()))
+                        self.previous_frame = frame_surface
+                    except Exception:
+                        self.previous_frame = None
+                    
+                    # Set up transition
+                    self.in_transition = True
+                    self.transition_start_time = time.time()
+                    
+                    # Load the new video but don't start playing yet
+                    self.next_video = VideoFileClip(video_path)
+                    
+                    print(f"Transitioning to video: {video_file}")
+                    return True
+                else:
+                    # No video playing, just start the new one
+                    self.current_video = VideoFileClip(video_path)
+                    
+                    # Set up the video surface
+                    self.video_surface = pygame.Surface((self.screen.get_width(), self.screen.get_height()))
+                    
+                    # Start playing
+                    self.start_time = time.time()
+                    self.paused = False
+                    
+                    print(f"Playing video: {video_file}")
+                    return True
             else:
-                # No video playing, just start the new one
-                self.current_video = VideoFileClip(video_path)
-                
-                # Set up the video surface
-                self.video_surface = pygame.Surface((self.screen.get_width(), self.screen.get_height()))
-                
-                # Start playing
-                self.start_time = time.time()
-                self.paused = False
-                
-                print(f"Playing video: {video_file}")
-                return True
+                # Neither the video nor a placeholder exists
+                print(f"Video not found: {video_file}")
+                return False
         except Exception as e:
             print(f"Error playing video: {e}")
             self.current_video = None

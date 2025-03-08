@@ -40,10 +40,10 @@
     "K_o": {"sound": "walk.wav", "image": "walk.jpg", "display_time": 5, "command": "walk"},
     "K_p": {"sound": "park.wav", "image": "park.jpg", "display_time": 5, "command": "park"},
     "K_LEFTBRACKET": {"sound": "water.wav", "image": "water.jpg", "display_time": 5, "command": "water"},
-    "K_SEMICOLON": {"sound": "treat.wav", "image": "treat.jpg", "display_time": 5, "command": "treat"},
-    "K_QUOTE": {"sound": "food.wav", "image": "food.jpg", "display_time": 5, "command": "food"},
-    "K_RETURN": {"sound": "play.wav", "image": "play.jpg", "display_time": 5, "command": "play"},
-    "K_RSHIFT": {"sound": "water.wav", "image": "water.jpg", "display_time": 5, "command": "water"}
+    "K_SEMICOLON": {"sound": "toy.wav", "image": "toy.jpg", "display_time": 5, "command": "toy"},
+    "K_QUOTE": {"sound": "water.wav", "image": "water.jpg", "display_time": 5, "command": "water"},
+    "K_RETURN": {"sound": "play.wav", "image": "play.jpg", "display_time": 5, "command": "play", "description": "Player 1 Special Command"},
+    "K_RSHIFT": {"sound": "ball.wav", "image": "ball.jpg", "display_time": 5, "command": "ball", "description": "Player 2 Special Command"}
   },
   "arrow_key_mappings": {
     "K_UP": 0,
@@ -51,16 +51,26 @@
     "K_DOWN": 2,
     "K_LEFT": 3,
     "K_w": 4,
-    "K_d": 0,
-    "K_s": 1,
-    "K_a": 2
+    "K_d": 5,
+    "K_s": 6,
+    "K_a": 7
   },
   "video_channels": [
     {"name": "Squirrels", "video": "squirrels.mp4"},
     {"name": "Birds", "video": "birds.mp4"},
     {"name": "Dogs", "video": "dogs.mp4"},
     {"name": "Cats", "video": "cats.mp4"},
-    {"name": "Water", "video": "water.mp4"}
+    {"name": "Water", "video": "water.mp4"},
+    {"name": "Fish", "video": "dogs.mp4"},
+    {"name": "Safari", "video": "cats.mp4"},
+    {"name": "Puppies", "video": "dogs.mp4"}
+  ],
+  "accepted_keys": [
+    "K_z", "K_x", "K_c", "K_v", "K_b", "K_n", 
+    "K_i", "K_o", "K_p", "K_LEFTBRACKET", "K_SEMICOLON", "K_QUOTE",
+    "K_RETURN", "K_RSHIFT",
+    "K_UP", "K_RIGHT", "K_DOWN", "K_LEFT",
+    "K_w", "K_d", "K_s", "K_a"
   ],
   "xarcade_mappings": {
     "p1_up": "K_UP",

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Input handler module for DogPuter
-Provides a consistent interface for different input methods (keyboard, joystick, x-arcade).
+Provides a consistent interface for different input methods (keyboard, joystick).
 """
 
 import pygame
@@ -33,23 +33,77 @@ class InputHandler(ABC):
 class KeyboardInputHandler(InputHandler):
     """Keyboard input handler for DogPuter"""
     
-    def __init__(self, key_mappings=None):
+    def __init__(self, input_mappings=None):
         """Initialize the keyboard input handler"""
-        self.key_mappings = key_mappings or {}
+        self.input_mappings = input_mappings or {}
+        # For backward compatibility
+        self.key_mappings = self.input_mappings
         # Initialize with empty events list
         self.events = []
+        print(f"KeyboardInputHandler initialized with {len(self.input_mappings)} input mappings")
+        # Log all key mappings for debugging
+        for key, command in self.input_mappings.items():
+            if not isinstance(key, tuple):  # Only process keyboard keys, not gamepad inputs
+                try:
+                    key_name = pygame.key.name(key)
+                    print(f"  Key mapping: {key_name} (code: {key}) -> {command}")
+                except:
+                    print(f"  Key mapping: Unknown key {key} -> {command}")
     
     def get_events(self):
         """Get all pending pygame events"""
         # Get events from pygame event queue
-        self.events = pygame.event.get()
+        all_events = pygame.event.get()
+        
+        # Filter and log keyboard events for debugging
+        self.events = []
+        for event in all_events:
+            if event.type == pygame.KEYDOWN:
+                try:
+                    key_name = pygame.key.name(event.key)
+                    print(f"KeyboardHandler detected key: {key_name} (code: {event.key})")
+                    if event.key in self.input_mappings:
+                        print(f"  Found mapping: {self.input_mappings[event.key]}")
+                    self.events.append(event)
+                except:
+                    print(f"KeyboardHandler detected unknown key: {event.key}")
+                    self.events.append(event)
+            elif event.type == pygame.KEYUP:
+                self.events.append(event)
+            else:
+                # Pass through non-keyboard events
+                self.events.append(event)
+                
         return self.events
     
     def is_key_pressed(self, key):
         """Check if a key is currently pressed"""
         keys = pygame.key.get_pressed()
-        mapped_key = self.key_mappings.get(key, key)
-        return keys[mapped_key]
+        
+        # If key is a string, it's a command we need to check if any mapped keys for this command are pressed
+        if isinstance(key, str):
+            # Look for any key that maps to this command
+            for k, command in self.input_mappings.items():
+                if not isinstance(k, tuple) and command == key and keys[k]:
+                    return True
+            return False
+        
+        # For backward compatibility: check if this key is mapped to another key
+        if key in self.input_mappings:
+            mapped_value = self.input_mappings[key]
+            # If the mapped value is a pygame key constant (int), use that key instead
+            if isinstance(mapped_value, int):
+                return keys[mapped_value]
+            
+        # Otherwise, check if the specific key is pressed
+        is_pressed = keys[key]
+        if is_pressed:
+            try:
+                key_name = pygame.key.name(key)
+                print(f"Key is pressed: {key_name} (code: {key})")
+            except:
+                print(f"Unknown key is pressed: {key}")
+        return is_pressed
     
     def get_axis_value(self, axis):
         """Get the current value of an axis (simulated via keyboard)"""
@@ -65,9 +119,10 @@ class KeyboardInputHandler(InputHandler):
 class JoystickInputHandler(InputHandler):
     """Joystick input handler for DogPuter"""
     
-    def __init__(self, joystick_id=0, button_mappings=None):
+    def __init__(self, joystick_id=0, input_mappings=None):
         """Initialize the joystick input handler"""
-        self.button_mappings = button_mappings or {}
+        self.input_mappings = input_mappings or {}
+        self.joystick_id = joystick_id
         self.events = []
         
         # Initialize joystick if available
@@ -77,7 +132,7 @@ class JoystickInputHandler(InputHandler):
             print(f"Joystick initialized: {self.joystick.get_name()}")
             self.active = True
         else:
-            print("No joystick found")
+            print(f"No joystick found with ID {joystick_id}")
             self.joystick = None
             self.active = False
     
@@ -87,22 +142,96 @@ class JoystickInputHandler(InputHandler):
         all_events = pygame.event.get()
         
         # Filter for joystick events
-        self.events = [event for event in all_events if 
-                      event.type in (pygame.JOYBUTTONDOWN, pygame.JOYBUTTONUP, 
-                                    pygame.JOYAXISMOTION, pygame.JOYHATMOTION)]
-                                    
+        self.events = []
+        for event in all_events:
+            if event.type in (pygame.JOYBUTTONDOWN, pygame.JOYBUTTONUP, 
+                             pygame.JOYAXISMOTION, pygame.JOYHATMOTION):
+                if hasattr(event, 'joy') and event.joy == self.joystick_id:
+                    self.events.append(event)
+                    
+                    # Debug info
+                    if event.type == pygame.JOYBUTTONDOWN:
+                        button_key = ('button', self.joystick_id, event.button)
+                        if button_key in self.input_mappings:
+                            print(f"Joystick button {event.button} maps to {self.input_mappings[button_key]}")
+                    elif event.type == pygame.JOYHATMOTION:
+                        if event.value[0] > 0:  # Right
+                            hat_key = ('hat', self.joystick_id, 'right')
+                            if hat_key in self.input_mappings:
+                                print(f"Joystick hat right maps to {self.input_mappings[hat_key]}")
+                        elif event.value[0] < 0:  # Left
+                            hat_key = ('hat', self.joystick_id, 'left')
+                            if hat_key in self.input_mappings:
+                                print(f"Joystick hat left maps to {self.input_mappings[hat_key]}")
+                        if event.value[1] > 0:  # Up
+                            hat_key = ('hat', self.joystick_id, 'up')
+                            if hat_key in self.input_mappings:
+                                print(f"Joystick hat up maps to {self.input_mappings[hat_key]}")
+                        elif event.value[1] < 0:  # Down
+                            hat_key = ('hat', self.joystick_id, 'down')
+                            if hat_key in self.input_mappings:
+                                print(f"Joystick hat down maps to {self.input_mappings[hat_key]}")
+                                
         return self.events
     
     def is_key_pressed(self, key):
-        """Check if a joystick button is pressed, using mapped keys"""
+        """Check if a joystick button/direction is pressed"""
         if not self.active or not self.joystick:
             return False
             
-        # Map key to joystick button if mapping exists
-        button = self.button_mappings.get(key, None)
-        
-        if button is not None and 0 <= button < self.joystick.get_numbuttons():
-            return self.joystick.get_button(button)
+        # If key is a string, it's a command we need to check if any mapped inputs for this command are pressed
+        if isinstance(key, str):
+            # Look for any joystick input that maps to this command
+            for input_key, command in self.input_mappings.items():
+                if isinstance(input_key, tuple) and command == key:
+                    input_type = input_key[0]
+                    joy_id = input_key[1]
+                    
+                    if joy_id != self.joystick_id:
+                        continue
+                        
+                    if input_type == 'button':
+                        button_num = input_key[2]
+                        if button_num < self.joystick.get_numbuttons() and self.joystick.get_button(button_num):
+                            return True
+                    elif input_type == 'hat':
+                        direction = input_key[2]
+                        if self.joystick.get_numhats() > 0:
+                            hat_value = self.joystick.get_hat(0)  # Use first hat
+                            if direction == 'up' and hat_value[1] > 0:
+                                return True
+                            elif direction == 'down' and hat_value[1] < 0:
+                                return True
+                            elif direction == 'right' and hat_value[0] > 0:
+                                return True
+                            elif direction == 'left' and hat_value[0] < 0:
+                                return True
+            return False
+            
+        # For backward compatibility: if key is a tuple, check that specific input
+        if isinstance(key, tuple) and len(key) == 3:
+            input_type = key[0]
+            joy_id = key[1]
+            
+            if joy_id != self.joystick_id:
+                return False
+                
+            if input_type == 'button':
+                button_num = key[2]
+                if button_num < self.joystick.get_numbuttons():
+                    return self.joystick.get_button(button_num)
+            elif input_type == 'hat':
+                direction = key[2]
+                if self.joystick.get_numhats() > 0:
+                    hat_value = self.joystick.get_hat(0)  # Use first hat
+                    if direction == 'up':
+                        return hat_value[1] > 0
+                    elif direction == 'down':
+                        return hat_value[1] < 0
+                    elif direction == 'right':
+                        return hat_value[0] > 0
+                    elif direction == 'left':
+                        return hat_value[0] < 0
         
         return False
     
@@ -118,97 +247,113 @@ class JoystickInputHandler(InputHandler):
     
     def update(self):
         """Update the joystick state"""
-        # Just check if joystick is still connected
-        if self.active and not pygame.joystick.get_count() > 0:
-            print("Joystick disconnected")
+        # Check if joystick is still connected
+        if self.active and (pygame.joystick.get_count() <= self.joystick_id):
+            print(f"Joystick {self.joystick_id} disconnected")
             self.active = False
             self.joystick = None
 
-class XArcadeInputHandler(InputHandler):
-    """X-Arcade input handler for DogPuter
+class XArcadeInputHandler(KeyboardInputHandler):
+    """X-Arcade input handler for DogPuter - specialized keyboard handler"""
     
-    The X-Arcade is typically recognized as a keyboard device,
-    but with specific key mappings for its buttons.
-    """
-    
-    # Default X-Arcade key mappings based on common configurations
+    # Default X-Arcade mappings for keyboard mode
     DEFAULT_MAPPINGS = {
-        # Player 1 controls
         'p1_up': pygame.K_UP,
         'p1_down': pygame.K_DOWN,
-        'p1_left': pygame.K_LEFT,
+        'p1_left': pygame.K_LEFT, 
         'p1_right': pygame.K_RIGHT,
-        'p1_a': pygame.K_LCTRL,
-        'p1_b': pygame.K_LALT,
-        'p1_c': pygame.K_SPACE,
-        'p1_start': pygame.K_1,
-        'p1_coin': pygame.K_5,
-        
-        # Player 2 controls (if needed)
-        'p2_up': pygame.K_r,
-        'p2_down': pygame.K_f,
-        'p2_left': pygame.K_d,
-        'p2_right': pygame.K_g,
-        'p2_a': pygame.K_a,
-        'p2_b': pygame.K_s,
-        'p2_c': pygame.K_q,
-        'p2_start': pygame.K_2,
-        'p2_coin': pygame.K_6,
+        'p1_button1': pygame.K_z,
+        'p1_button2': pygame.K_x,
+        'p1_button3': pygame.K_c,
+        'p1_button4': pygame.K_v,
+        'p1_button5': pygame.K_b,
+        'p1_button6': pygame.K_n,
+        'p1_start': pygame.K_RETURN,
+        'p2_up': pygame.K_w,
+        'p2_down': pygame.K_s,
+        'p2_left': pygame.K_a,
+        'p2_right': pygame.K_d,
+        'p2_button1': pygame.K_i,
+        'p2_button2': pygame.K_o,
+        'p2_button3': pygame.K_p,
+        'p2_button4': pygame.K_LEFTBRACKET,
+        'p2_button5': pygame.K_SEMICOLON,
+        'p2_button6': pygame.K_QUOTE,
+        'p2_start': pygame.K_RSHIFT
     }
     
-    def __init__(self, key_mappings=None):
-        """Initialize the X-Arcade input handler with custom mappings if provided"""
-        self.key_mappings = key_mappings or self.DEFAULT_MAPPINGS
+    def __init__(self, xarcade_mappings=None):
+        """Initialize the X-Arcade input handler"""
+        # Initialize with the X-Arcade default mappings if none provided
+        xarcade_mappings = xarcade_mappings or self.DEFAULT_MAPPINGS
+        
+        # Initialize parent class with empty input_mappings
+        super().__init__(input_mappings=None)
+        
+        # Then set key_mappings separately to avoid being overridden by parent class
+        self.key_mappings = xarcade_mappings
+        
+        # Map X-Arcade logical names to pygame keys through DEFAULT_MAPPINGS
         self.events = []
-    
+        
     def get_events(self):
-        """Get all pending pygame events, filtering for keyboard events used by X-Arcade"""
+        """Get all pending pygame events, filtering for X-Arcade keys"""
         # Get all events
         all_events = pygame.event.get()
         
-        # Filter for keyboard events that match our mappings
+        # Filter for X-Arcade keys
+        self.events = []
         x_arcade_keys = set(self.key_mappings.values())
         
-        self.events = [event for event in all_events if 
-                      (event.type in (pygame.KEYDOWN, pygame.KEYUP) and 
-                       hasattr(event, 'key') and event.key in x_arcade_keys)]
-                      
+        for event in all_events:
+            if event.type in (pygame.KEYDOWN, pygame.KEYUP) and event.key in x_arcade_keys:
+                self.events.append(event)
+            else:
+                # Other events like quit need to be passed through
+                if event.type == pygame.QUIT:
+                    self.events.append(event)
+                    
         return self.events
     
     def is_key_pressed(self, key):
-        """Check if an X-Arcade button is pressed, using logical button names"""
+        """Check if a key or X-Arcade logical button is pressed"""
         keys = pygame.key.get_pressed()
         
-        # Handle case where key is a logical name (like 'p1_up')
-        if isinstance(key, str) and key in self.key_mappings:
-            mapped_key = self.key_mappings[key]
-            return keys[mapped_key]
-        
-        # Handle case where key is a pygame key constant
-        for logical_key, mapped_key in self.key_mappings.items():
-            if mapped_key == key:
-                return keys[mapped_key]
+        # If key is a string, treat it as a logical X-Arcade name (e.g., 'p1_button1')
+        if isinstance(key, str):
+            if key in self.key_mappings:
+                mapped_key = self.key_mappings[key]
+                is_pressed = keys[mapped_key]
+                if is_pressed:
+                    print(f"X-Arcade button {key} is pressed")
+                return is_pressed
                 
-        return False
+            # Also check if it's a command we need to find in input_mappings
+            for k, command in self.input_mappings.items():
+                if not isinstance(k, tuple) and command == key:
+                    # Check if this key is in our X-Arcade keys
+                    if k in set(self.key_mappings.values()) and keys[k]:
+                        return True
+            return False
+            
+        # Otherwise, check the specific key
+        return super().is_key_pressed(key)
     
     def get_axis_value(self, axis):
-        """Simulate joystick axes using X-Arcade directional buttons"""
-        # X-Arcade doesn't have true analog axes, but we can simulate them
-        if axis == 0:  # Horizontal axis
-            left = self.is_key_pressed('p1_left')
-            right = self.is_key_pressed('p1_right')
-            return 1.0 if right and not left else -1.0 if left and not right else 0.0
-        elif axis == 1:  # Vertical axis
-            up = self.is_key_pressed('p1_up')
-            down = self.is_key_pressed('p1_down')
-            return 1.0 if down and not up else -1.0 if up and not down else 0.0
+        """Simulate axis input using X-Arcade directional buttons"""
+        keys = pygame.key.get_pressed()
         
+        if axis == 0:  # Horizontal axis
+            right = keys[self.key_mappings['p1_right']]
+            left = keys[self.key_mappings['p1_left']]
+            return (1.0 if right else 0.0) + (-1.0 if left else 0.0)
+            
+        if axis == 1:  # Vertical axis
+            down = keys[self.key_mappings['p1_down']]
+            up = keys[self.key_mappings['p1_up']]
+            return (1.0 if down else 0.0) + (-1.0 if up else 0.0)
+            
         return 0.0
-    
-    def update(self):
-        """Update the input state"""
-        # For X-Arcade, we don't need additional updates beyond get_events
-        pass
 
 class CompositeInputHandler(InputHandler):
     """Composite input handler that manages multiple input handlers"""
@@ -312,6 +457,11 @@ def create_input_handler(config=None):
     config = config or {}
     input_type = config.get('input_type', 'keyboard')
     
+    # For backward compatibility: support both input_mappings and key_mappings
+    input_mappings = config.get('input_mappings')
+    if input_mappings is None:
+        input_mappings = config.get('key_mappings')
+    
     if input_type == 'mock':
         return MockInputHandler()
     
@@ -319,25 +469,27 @@ def create_input_handler(config=None):
         composite = CompositeInputHandler()
         
         # Add keyboard handler by default
-        composite.add_handler(KeyboardInputHandler(config.get('key_mappings')))
-        
-        # Add joystick handler if enabled
-        if config.get('use_joystick', True):
-            composite.add_handler(JoystickInputHandler(config.get('joystick_id', 0),
-                                                     config.get('button_mappings')))
+        composite.add_handler(KeyboardInputHandler(input_mappings))
         
         # Add X-Arcade handler if enabled
         if config.get('use_xarcade', False):
             composite.add_handler(XArcadeInputHandler(config.get('xarcade_mappings')))
-            
+        
+        # Add joystick handlers if enabled
+        if config.get('use_joystick', False):
+            # Support multiple joysticks
+            joystick_count = pygame.joystick.get_count()
+            for i in range(min(joystick_count, 2)):  # Support up to 2 joysticks
+                composite.add_handler(JoystickInputHandler(i, input_mappings))
+        
         return composite
     
     if input_type == 'keyboard':
-        return KeyboardInputHandler(config.get('key_mappings'))
+        return KeyboardInputHandler(input_mappings)
     
     if input_type == 'joystick':
         return JoystickInputHandler(config.get('joystick_id', 0),
-                                  config.get('button_mappings'))
+                                   input_mappings)
     
     if input_type == 'xarcade':
         return XArcadeInputHandler(config.get('xarcade_mappings'))

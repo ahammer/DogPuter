@@ -1,0 +1,12 @@
+{
+  "video_channels": [
+    {"name": "Squirrels", "video": "squirrels.mp4"},
+    {"name": "Birds", "video": "birds.mp4"},
+    {"name": "Dogs", "video": "dogs.mp4"},
+    {"name": "Cats", "video": "cats.mp4"},
+    {"name": "Water", "video": "water.mp4"},
+    {"name": "Fish", "video": "dogs.mp4"},
+    {"name": "Safari", "video": "cats.mp4"},
+    {"name": "Puppies", "video": "dogs.mp4"}
+  ]
+}

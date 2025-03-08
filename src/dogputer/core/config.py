@@ -15,7 +15,9 @@ CONFIG_DIRS = [
 ]
 
 # Default key mappings
-DEFAULT_CONFIG_NAME = 'development'
+DEFAULT_KEYMAPPING = 'development'
+DEFAULT_UI_CONFIG = 'display'
+DEFAULT_CONTENT_CONFIG = 'videos'
 
 def get_pygame_key_constant(key_name):
     """Convert a key name string (e.g., 'K_a') to a pygame key constant."""
@@ -28,89 +30,126 @@ def get_pygame_key_constant(key_name):
         print(f"Warning: Unknown pygame key constant: {key_name}")
         return None
 
-def load_config(config_name=None):
-    """
-    Load configuration from a JSON file.
-    
-    Args:
-        config_name (str): Name of the config file to load (without extension)
-    
-    Returns:
-        dict: Loaded configuration with pygame key constants
-    """
-    # Use default if no config name provided
-    config_name = config_name or DEFAULT_CONFIG_NAME
-    
-    # Try to find the config file in the search paths
-    config_filename = f"{config_name}.json"
-    config_path = None
-    
-    # Check keymappings subdirectory first
-    for config_dir in CONFIG_DIRS:
-        keymappings_dir = config_dir / 'keymappings'
-        potential_path = keymappings_dir / config_filename
+def get_gamepad_constant(button_name):
+    """Convert a gamepad button name to a constant value."""
+    # Parse gamepad button names like GAMEPAD1_BUTTON1, GAMEPAD2_UP, etc.
+    if not button_name.startswith('GAMEPAD'):
+        return None
         
-        if potential_path.exists():
-            config_path = potential_path
-            break
+    try:
+        parts = button_name.split('_')
+        if len(parts) < 2:
+            return None
+            
+        gamepad_num = int(parts[0][7:]) - 1  # GAMEPAD1 -> 0, GAMEPAD2 -> 1
+        button_type = parts[1]
+        
+        if button_type == 'BUTTON':
+            button_num = int(parts[2]) - 1  # BUTTON1 -> 0, BUTTON2 -> 1
+            return ('button', gamepad_num, button_num)
+        elif button_type in ('UP', 'DOWN', 'LEFT', 'RIGHT'):
+            return ('hat', gamepad_num, button_type.lower())
+        elif button_type == 'START':
+            return ('button', gamepad_num, 9)  # Typically button 9 or 10 is START
+            
+        return None
+    except (ValueError, IndexError):
+        print(f"Warning: Invalid gamepad button name: {button_name}")
+        return None
+
+def find_config_file(config_name, subdirectory=None):
+    """Find a config file in the search paths."""
+    config_filename = f"{config_name}.json"
     
-    # If not found in keymappings, check main dirs
-    if config_path is None:
+    # Check subdirectory first if provided
+    if subdirectory:
         for config_dir in CONFIG_DIRS:
-            potential_path = config_dir / config_filename
+            sub_dir = config_dir / subdirectory
+            potential_path = sub_dir / config_filename
             
             if potential_path.exists():
-                config_path = potential_path
-                break
+                return potential_path
     
-    # If config file not found, use builtin default
+    # If not found in subdirectory, check main dirs
+    for config_dir in CONFIG_DIRS:
+        potential_path = config_dir / config_filename
+        
+        if potential_path.exists():
+            return potential_path
+    
+    return None
+
+def load_ui_config(config_name=None):
+    """Load UI configuration (colors, display, animations)."""
+    config_name = config_name or DEFAULT_UI_CONFIG
+    config_path = find_config_file(config_name, 'ui')
+    
     if config_path is None:
-        print(f"Warning: Config file '{config_filename}' not found, using builtin defaults")
-        return create_default_config()
+        print(f"Warning: UI config file '{config_name}.json' not found, using builtin defaults")
+        return create_default_ui_config()
     
-    # Load the config
     try:
         with open(config_path, 'r') as f:
-            config = json.load(f)
-            print(f"Loaded config from {config_path}")
+            ui_config = json.load(f)
+            print(f"Loaded UI config from {config_path}")
+            return ui_config
     except (json.JSONDecodeError, IOError) as e:
-        print(f"Error loading config file {config_path}: {e}")
-        return create_default_config()
-    
-    # Convert keys to pygame constants for key_mappings
-    if 'key_mappings' in config:
-        key_mappings = {}
-        for key_name, value in config['key_mappings'].items():
-            key_constant = get_pygame_key_constant(key_name)
-            if key_constant is not None:
-                key_mappings[key_constant] = value
-        config['key_mappings'] = key_mappings
-    
-    # Convert keys to pygame constants for arrow_key_mappings
-    if 'arrow_key_mappings' in config:
-        arrow_key_mappings = {}
-        for key_name, value in config['arrow_key_mappings'].items():
-            key_constant = get_pygame_key_constant(key_name)
-            if key_constant is not None:
-                arrow_key_mappings[key_constant] = value
-        config['arrow_key_mappings'] = arrow_key_mappings
-    
-    # Convert X-Arcade mappings if present
-    if 'xarcade_mappings' in config:
-        xarcade_mappings = {}
-        for logical_name, key_name in config['xarcade_mappings'].items():
-            key_constant = get_pygame_key_constant(key_name)
-            if key_constant is not None:
-                xarcade_mappings[logical_name] = key_constant
-        config['xarcade_mappings'] = xarcade_mappings
-    
-    # Extract specific sections into global variables
-    extract_to_globals(config)
-    
-    return config
+        print(f"Error loading UI config file {config_path}: {e}")
+        return create_default_ui_config()
 
-def create_default_config():
-    """Create a default configuration dictionary"""
+def load_keymapping(config_name=None):
+    """Load key mapping configuration."""
+    config_name = config_name or DEFAULT_KEYMAPPING
+    config_path = find_config_file(config_name, 'keymappings')
+    
+    if config_path is None:
+        print(f"Warning: Keymapping file '{config_name}.json' not found, using builtin defaults")
+        return create_default_keymapping()
+    
+    try:
+        with open(config_path, 'r') as f:
+            raw_mappings = json.load(f)
+            print(f"Loaded keymapping from {config_path}")
+            
+            # Process the flat mapping format
+            input_mappings = {}
+            for key_name, command in raw_mappings.items():
+                # Check if it's a gamepad mapping
+                if key_name.startswith('GAMEPAD'):
+                    gamepad_const = get_gamepad_constant(key_name)
+                    if gamepad_const:
+                        input_mappings[gamepad_const] = command
+                # Otherwise treat it as a keyboard key
+                else:
+                    key_constant = get_pygame_key_constant(key_name)
+                    if key_constant is not None:
+                        input_mappings[key_constant] = command
+            
+            return input_mappings
+    except (json.JSONDecodeError, IOError) as e:
+        print(f"Error loading keymapping file {config_path}: {e}")
+        return create_default_keymapping()
+
+def load_content_config(config_name=None):
+    """Load content configuration (videos, channels, etc.)."""
+    config_name = config_name or DEFAULT_CONTENT_CONFIG
+    config_path = find_config_file(config_name, 'content')
+    
+    if config_path is None:
+        print(f"Warning: Content config file '{config_name}.json' not found, using builtin defaults")
+        return create_default_content_config()
+    
+    try:
+        with open(config_path, 'r') as f:
+            content_config = json.load(f)
+            print(f"Loaded content config from {config_path}")
+            return content_config
+    except (json.JSONDecodeError, IOError) as e:
+        print(f"Error loading content config file {config_path}: {e}")
+        return create_default_content_config()
+
+def create_default_ui_config():
+    """Create default UI configuration."""
     return {
         "colors": {
             "BLUE_PRIMARY": [0, 102, 170],
@@ -141,25 +180,27 @@ def create_default_config():
             "PARTICLE_SPEED_RANGE": [20, 80],
             "TRANSITION_DURATION": 0.8,
             "WAITING_ANIMATION_SPEED": 1.5
-        },
-        "key_mappings": {
-            pygame.K_0: {"sound": "play.wav", "image": "play.jpg", "display_time": 5, "command": "play"},
-            pygame.K_1: {"sound": "rope.wav", "image": "rope.jpg", "display_time": 5, "command": "rope"},
-            pygame.K_2: {"sound": "ball.wav", "image": "ball.jpg", "display_time": 5, "command": "ball"},
-            pygame.K_3: {"sound": "hugs.wav", "image": "hugs.jpg", "display_time": 5, "command": "hugs"},
-            pygame.K_4: {"sound": "outside.wav", "image": "outside.jpg", "display_time": 5, "command": "outside"},
-            pygame.K_5: {"sound": "walk.wav", "image": "walk.jpg", "display_time": 5, "command": "walk"},
-            pygame.K_6: {"sound": "water.wav", "image": "water.jpg", "display_time": 5, "command": "water"},
-            pygame.K_7: {"sound": "park.wav", "image": "park.jpg", "display_time": 5, "command": "park"},
-            pygame.K_8: {"sound": "toy.wav", "image": "toy.jpg", "display_time": 5, "command": "toy"},
-            pygame.K_9: {"sound": "bed.wav", "image": "bed.jpg", "display_time": 5, "command": "bed"}
-        },
-        "arrow_key_mappings": {
-            pygame.K_UP: 0,
-            pygame.K_RIGHT: 1,
-            pygame.K_DOWN: 2, 
-            pygame.K_LEFT: 3
-        },
+        }
+    }
+
+def create_default_keymapping():
+    """Create default key mapping."""
+    return {
+        pygame.K_0: "play",
+        pygame.K_1: "rope",
+        pygame.K_2: "ball",
+        pygame.K_3: "hugs",
+        pygame.K_4: "outside",
+        pygame.K_5: "walk",
+        pygame.K_6: "water",
+        pygame.K_7: "park",
+        pygame.K_8: "toy",
+        pygame.K_9: "bed"
+    }
+
+def create_default_content_config():
+    """Create default content configuration."""
+    return {
         "video_channels": [
             {"name": "Squirrels", "video": "squirrels.mp4"},
             {"name": "Birds", "video": "birds.mp4"},
@@ -169,35 +210,62 @@ def create_default_config():
         ]
     }
 
-def extract_to_globals(config):
-    """Extract configuration values to global variables for backward compatibility"""
+def extract_to_globals(ui_config):
+    """Extract UI configuration values to global variables for backward compatibility."""
     # Extract colors
-    if 'colors' in config:
-        globals().update({k: tuple(v) for k, v in config['colors'].items()})
+    if 'colors' in ui_config:
+        globals().update({k: tuple(v) for k, v in ui_config['colors'].items()})
     
     # Extract display settings
-    if 'display' in config:
-        globals().update({k: tuple(v) if isinstance(v, list) else v for k, v in config['display'].items()})
+    if 'display' in ui_config:
+        globals().update({k: tuple(v) if isinstance(v, list) else v for k, v in ui_config['display'].items()})
     
     # Extract animation settings
-    if 'animations' in config:
-        for k, v in config['animations'].items():
+    if 'animations' in ui_config:
+        for k, v in ui_config['animations'].items():
             if isinstance(v, list) and len(v) == 2:
                 globals()[k] = tuple(v)
             else:
                 globals()[k] = v
+
+def load_config(keymapping_name=None):
+    """
+    Load all configuration components.
     
-    # Extract key mappings and other settings
-    globals()['KEY_MAPPINGS'] = config.get('key_mappings', {})
-    globals()['ARROW_KEY_MAPPINGS'] = config.get('arrow_key_mappings', {})
-    globals()['VIDEO_CHANNELS'] = config.get('video_channels', [])
-    globals()['XARCADE_MAPPINGS'] = config.get('xarcade_mappings', {})
+    Args:
+        keymapping_name (str): Name of the keymapping to load (without extension)
+    
+    Returns:
+        dict: Combined configuration
+    """
+    # Load UI configuration
+    ui_config = load_ui_config()
+    
+    # Load key mappings
+    input_mappings = load_keymapping(keymapping_name)
+    
+    # Load content configuration
+    content_config = load_content_config()
+    
+    # Combine everything
+    config = {
+        **ui_config,
+        "input_mappings": input_mappings,
+        **content_config
+    }
+    
+    # For backward compatibility
+    config["key_mappings"] = input_mappings
+    
+    # Extract UI settings to globals for backward compatibility
+    extract_to_globals(ui_config)
+    
+    return config
 
 # Load the default configuration on module import
 config = load_config()
 
 # Make configuration available via module variables for backward compatibility
-# The global variables will be populated by extract_to_globals during load_config
-KEY_MAPPINGS = config.get('key_mappings', {})
-ARROW_KEY_MAPPINGS = config.get('arrow_key_mappings', {})
+INPUT_MAPPINGS = config.get('input_mappings', {})
+KEY_MAPPINGS = INPUT_MAPPINGS  # For backward compatibility
 VIDEO_CHANNELS = config.get('video_channels', [])

@@ -23,7 +23,6 @@ from dogputer.io.input_handler import MockInputHandler
 # Import the main application class from the refactored package structure
 from dogputer.main import DogPuter
 
-@pytest.mark.skip("Integration tests need to be updated after refactoring")
 class TestUIIntegration:
     """Integration tests for the DogPuter UI"""
     

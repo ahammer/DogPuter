@@ -1,0 +1,57 @@
+{
+  "colors": {
+    "BLUE_PRIMARY": [0, 102, 170],
+    "YELLOW_PRIMARY": [255, 204, 0],
+    "WHITE": [255, 255, 255],
+    "LIGHT_BLUE": [153, 204, 255],
+    "CREAM": [255, 255, 204],
+    "SUCCESS_COLOR": [102, 204, 255],
+    "ALERT_COLOR": [255, 255, 153],
+    "ERROR_COLOR": [255, 153, 0]
+  },
+  "display": {
+    "SCREEN_WIDTH": 800,
+    "SCREEN_HEIGHT": 600,
+    "BACKGROUND_COLOR": [0, 102, 170],
+    "DEFAULT_DISPLAY_TIME": 5,
+    "PAW_CURSOR_SIZE": 120,
+    "BUTTON_HIGHLIGHT_THICKNESS": 4,
+    "FEEDBACK_HEIGHT": 80,
+    "WAITING_TEXT_SIZE": 72,
+    "FEEDBACK_TEXT_SIZE": 40
+  },
+  "animations": {
+    "FEEDBACK_DURATION": 1.8,
+    "PARTICLE_MAX_COUNT": 40,
+    "PARTICLE_DEFAULT_LIFETIME": 1.0,
+    "PARTICLE_SIZE_RANGE": [3, 10],
+    "PARTICLE_SPEED_RANGE": [20, 80],
+    "TRANSITION_DURATION": 0.8,
+    "WAITING_ANIMATION_SPEED": 1.5
+  },
+  "key_mappings": {
+    "K_0": {"sound": "play.wav", "image": "play.jpg", "display_time": 5, "command": "play"},
+    "K_1": {"sound": "rope.wav", "image": "rope.jpg", "display_time": 5, "command": "rope"},
+    "K_2": {"sound": "ball.wav", "image": "ball.jpg", "display_time": 5, "command": "ball"},
+    "K_3": {"sound": "hugs.wav", "image": "hugs.jpg", "display_time": 5, "command": "hugs"},
+    "K_4": {"sound": "outside.wav", "image": "outside.jpg", "display_time": 5, "command": "outside"},
+    "K_5": {"sound": "walk.wav", "image": "walk.jpg", "display_time": 5, "command": "walk"},
+    "K_6": {"sound": "water.wav", "image": "water.jpg", "display_time": 5, "command": "water"},
+    "K_7": {"sound": "park.wav", "image": "park.jpg", "display_time": 5, "command": "park"},
+    "K_8": {"sound": "toy.wav", "image": "toy.jpg", "display_time": 5, "command": "toy"},
+    "K_9": {"sound": "bed.wav", "image": "bed.jpg", "display_time": 5, "command": "bed"}
+  },
+  "arrow_key_mappings": {
+    "K_UP": 0,
+    "K_RIGHT": 1,
+    "K_DOWN": 2,
+    "K_LEFT": 3
+  },
+  "video_channels": [
+    {"name": "Squirrels", "video": "squirrels.mp4"},
+    {"name": "Birds", "video": "birds.mp4"},
+    {"name": "Dogs", "video": "dogs.mp4"},
+    {"name": "Cats", "video": "cats.mp4"},
+    {"name": "Water", "video": "water.mp4"}
+  ]
+}

@@ -20,6 +20,13 @@ setup(
             "pytest",
             "pytest-cov",
             "pytest-timeout",
+            "pyinstaller",
+            "build",
+        ],
+    },
+    entry_points={
+        "console_scripts": [
+            "dogputer=dogputer.__main__:main",
         ],
     },
 )

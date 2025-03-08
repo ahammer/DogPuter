@@ -149,16 +149,20 @@ class TestUIIntegration:
             mock_joystick = MagicMock()
             mock_joystick.get_name.return_value = "Test Joystick"
             
-            with patch('pygame.joystick.Joystick', return_value=mock_joystick):
+            # Mock input handler
+            mock_input_handler = MagicMock()
+            
+            with patch('pygame.joystick.Joystick', return_value=mock_joystick), \
+                 patch('dogputer.io.input_handler.create_input_handler', return_value=mock_input_handler):
                 # Create app instance
                 app = DogPuter()
                 
-                # Verify joystick was detected and initialized
-                assert app.joystick is not None
-                mock_joystick.init.assert_called_once()
+                # Verify input handler was created
+                assert app.input_handler is not None
                 
-                # Mock the joystick handling in app_state
-                app.app_state.handle_joystick = MagicMock()
+                # Mock app state
+                app.input_handler.get_events = MagicMock(return_value=[])
+                app.input_handler.is_key_pressed = MagicMock(return_value=False)
                 
                 # Create a flag for stopping the run loop
                 should_stop = [False]
@@ -170,8 +174,9 @@ class TestUIIntegration:
                     clock = pygame.time.Clock()
                     
                     while running and not should_stop[0]:
-                        # Only need to verify joystick handling is called
-                        app.app_state.handle_joystick(app.joystick)
+                        # Only need to verify input handler is used
+                        app.input_handler.update()
+                        app.input_handler.get_events()
                         
                         # Only run one iteration
                         should_stop[0] = True
@@ -188,8 +193,9 @@ class TestUIIntegration:
                 # Wait a short time for processing
                 time.sleep(0.1)
                 
-                # Verify joystick handling was called
-                app.app_state.handle_joystick.assert_called_with(mock_joystick)
+                # Verify input handler was used
+                mock_input_handler.update.assert_called_once()
+                mock_input_handler.get_events.assert_called_once()
     
     @pytest.mark.ui
     def test_app_video_playback(self):

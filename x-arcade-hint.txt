@@ -1,0 +1,49 @@
+Below is an example of a common default mapping used when the X‑Arcade controller is set to “keyboard mode.” (Keep in mind that many X‑Arcade devices can be reconfigured via DIP switches or software so your setup may vary.)
+
+We will want to focus on the player buttons for bindings (lets use them all, as wel have 14), as well as all 8 joystick directions for "channels" a dog might like to watch, like a fish tank, safari, some mice, cute puppies, etc.
+
+So 14 buttons including the start buttons, but they should be reserved for something challenging as they are a bit difficult to reach. Do not use the coin button, it's on the side, a dog won't get it.
+---
+
+### X‑Arcade Default Keyboard Map
+
+#### Player 1
+
+| **Control**      | **Keyboard Key**   |
+|------------------|--------------------|
+| **Joystick**     |                    |
+| – Up             | Up Arrow           |
+| – Down           | Down Arrow         |
+| – Left           | Left Arrow         |
+| – Right          | Right Arrow        |
+| **Buttons**      |                    |
+| – Button 1       | Z                  |
+| – Button 2       | X                  |
+| – Button 3       | C                  |
+| – Button 4       | V                  |
+| – Button 5       | B (optional)       |
+| – Button 6       | N (optional)       |
+| **Other**        |                    |
+| – Start          | Enter              |
+| – Coin           | 5                  |
+
+#### Player 2 (if applicable)
+
+| **Control**      | **Keyboard Key**   |
+|------------------|--------------------|
+| **Joystick**     |                    |
+| – Up             | W                  |
+| – Down           | S                  |
+| – Left           | A                  |
+| – Right          | D                  |
+| **Buttons**      |                    |
+| – Button 1       | I                  |
+| – Button 2       | O                  |
+| – Button 3       | P                  |
+| – Button 4       | [ (open bracket)   |
+| – Button 5       | ; (optional)       |
+| – Button 6       | ' (optional)       |
+| **Other**        |                    |
+| – Start          | Right Shift        |
+| – Coin           | 0                  |
+

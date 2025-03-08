@@ -19,7 +19,10 @@ from dogputer.ui.animation import AnimationSystem, EasingFunctions
 from dogputer.ui.particle_system import ParticleSystem
 
 class DogPuter:
-    def __init__(self):
+    def __init__(self, config=None):
+        # Store the configuration
+        self.config = config or {}
+        
         # Initialize pygame
         pygame.init()
         pygame.mixer.init()
@@ -40,12 +43,18 @@ class DogPuter:
         os.makedirs(self.images_dir, exist_ok=True)
         os.makedirs(self.videos_dir, exist_ok=True)
         
-        # Initialize joystick
-        self.joystick = None
-        if pygame.joystick.get_count() > 0:
-            self.joystick = pygame.joystick.Joystick(0)
-            self.joystick.init()
-            print(f"Joystick detected: {self.joystick.get_name()}")
+        # Initialize input handler based on configuration
+        self.input_config = {
+            'input_type': 'composite',
+            'use_joystick': True,
+            'use_xarcade': 'xarcade_mappings' in self.config
+        }
+        
+        if 'xarcade_mappings' in self.config:
+            self.input_config['xarcade_mappings'] = self.config.get('xarcade_mappings')
+            
+        from dogputer.io.input_handler import create_input_handler
+        self.input_handler = create_input_handler(self.input_config)
         
         # Initialize video player
         self.video_player = VideoPlayer(self.screen, self.videos_dir)
@@ -183,9 +192,23 @@ class DogPuter:
                     # Handle joystick button press as input
                     self.app_state.handle_key_press(pygame.K_SPACE)  # Treat as space key
             
-            # Handle continuous joystick input
-            if self.joystick:
-                self.app_state.handle_joystick(self.joystick)
+            # Process events from input handler
+            self.input_handler.update()
+            events = self.input_handler.get_events()
+            
+            # Process arrow keys and other input from active handlers
+            for key, channel_index in ARROW_KEY_MAPPINGS.items():
+                if self.input_handler.is_key_pressed(key):
+                    if channel_index < len(VIDEO_CHANNELS):
+                        # Check if the key is in the arrow key mappings
+                        self.app_state.handle_key_press(key)
+                        break
+            
+            # Process key mappings for sounds and images
+            for key, action in KEY_MAPPINGS.items():
+                if self.input_handler.is_key_pressed(key):
+                    self.app_state.handle_key_press(key)
+                    break
             
             # Update state
             self.app_state.update(delta_time)

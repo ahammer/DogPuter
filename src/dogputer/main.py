@@ -49,6 +49,10 @@ class DogPuter:
             'use_joystick': True,
             'input_mappings': INPUT_MAPPINGS
         }
+        
+        # Check if x-arcade keyboard mode is being used
+        if self.config.get('keymapping_name') == 'x-arcade-kb':
+            self.input_config['use_xarcade'] = True
             
         from dogputer.io.input_handler import create_input_handler
         self.input_handler = create_input_handler(self.input_config)
@@ -218,7 +222,28 @@ class DogPuter:
                         key_name = pygame.key.name(event.key)
                         print(f"Key pressed: {key_name} (code: {event.key})")
                         
-                        if event.key in INPUT_MAPPINGS:
+                        # Process key - handle specially for X-Arcade keys
+                        if self.config.get('keymapping_name') == 'x-arcade-kb':
+                            # For x-arcade-kb, if key is a mapped X-Arcade button, check the command in the mapping
+                            from dogputer.core.config import INPUT_MAPPINGS
+                            if event.key in INPUT_MAPPINGS:
+                                # Process mapped key
+                                command = INPUT_MAPPINGS[event.key]
+                                print(f"Found mapping for key {key_name}: {command}")
+                                
+                                # Handle video commands differently
+                                if command.startswith("video_"):
+                                    # Extract channel from video_ prefix
+                                    video_name = command[6:] # Remove "video_" prefix
+                                    print(f"Selecting video: {video_name}")
+                            
+                            # Create a special mapping for z key to ball if in x-arcade-kb mode
+                            if event.key == pygame.K_z:
+                                print(f"Special mapping for X-Arcade p1_button1 (z key) -> ball")
+                            
+                            # Always process key for X-Arcade
+                            self.app_state.handle_key_press(event.key)
+                        elif event.key in INPUT_MAPPINGS:
                             # Process mapped key
                             command = INPUT_MAPPINGS[event.key]
                             print(f"Found mapping for key {key_name}: {command}")

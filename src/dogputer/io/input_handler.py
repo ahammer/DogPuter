@@ -287,27 +287,60 @@ class XArcadeInputHandler(KeyboardInputHandler):
         # Initialize with the X-Arcade default mappings if none provided
         xarcade_mappings = xarcade_mappings or self.DEFAULT_MAPPINGS
         
-        # Initialize parent class with empty input_mappings
-        super().__init__(input_mappings=None)
+        # Create mappings from key names to commands
+        input_mappings = {}
         
-        # Then set key_mappings separately to avoid being overridden by parent class
+        # Add the global INPUT_MAPPINGS
+        from dogputer.core.config import INPUT_MAPPINGS
+        input_mappings.update(INPUT_MAPPINGS)
+        
+        # Initialize parent class with the full input_mappings
+        super().__init__(input_mappings=input_mappings)
+        
+        # Set key_mappings for X-Arcade logical names to pygame keys
         self.key_mappings = xarcade_mappings
         
         # Map X-Arcade logical names to pygame keys through DEFAULT_MAPPINGS
         self.events = []
+        
+        # Log the X-Arcade key mappings for debugging
+        print(f"X-Arcade input handler initialized with {len(self.key_mappings)} logical button mappings")
+        for logical_name, pygame_key in self.key_mappings.items():
+            try:
+                key_name = pygame.key.name(pygame_key)
+                print(f"  X-Arcade mapping: {logical_name} -> {key_name} (code: {pygame_key})")
+            except:
+                print(f"  X-Arcade mapping: {logical_name} -> Unknown key {pygame_key}")
         
     def get_events(self):
         """Get all pending pygame events, filtering for X-Arcade keys"""
         # Get all events
         all_events = pygame.event.get()
         
-        # Filter for X-Arcade keys
+        # Filter for X-Arcade keys and mapped command keys
         self.events = []
         x_arcade_keys = set(self.key_mappings.values())
         
         for event in all_events:
-            if event.type in (pygame.KEYDOWN, pygame.KEYUP) and event.key in x_arcade_keys:
-                self.events.append(event)
+            if event.type in (pygame.KEYDOWN, pygame.KEYUP):
+                # Include X-Arcade keys and keys in INPUT_MAPPINGS
+                if event.key in x_arcade_keys or event.key in self.input_mappings:
+                    # If it's a key we care about, add extra debugging
+                    if event.type == pygame.KEYDOWN:
+                        try:
+                            key_name = pygame.key.name(event.key)
+                            print(f"X-Arcade handler detected key: {key_name} (code: {event.key})")
+                            # Check if it's a mapped key
+                            if event.key in self.input_mappings:
+                                print(f"  Found INPUT_MAPPING: {self.input_mappings[event.key]}")
+                            # Check if it's an X-Arcade key
+                            for logical_name, key_code in self.key_mappings.items():
+                                if key_code == event.key:
+                                    print(f"  Found X-Arcade mapping: {logical_name}")
+                        except:
+                            print(f"X-Arcade handler detected unknown key: {event.key}")
+                            
+                    self.events.append(event)
             else:
                 # Other events like quit need to be passed through
                 if event.type == pygame.QUIT:

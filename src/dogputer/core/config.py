@@ -119,6 +119,11 @@ def load_keymapping(config_name=None):
                     gamepad_const = get_gamepad_constant(key_name)
                     if gamepad_const:
                         input_mappings[gamepad_const] = command
+                # Check if it's a direct key code (number)
+                elif key_name.isdigit():
+                    key_code = int(key_name)
+                    input_mappings[key_code] = command
+                    print(f"Added direct key mapping: {key_code} -> {command}")
                 # Otherwise treat it as a keyboard key
                 else:
                     key_constant = get_pygame_key_constant(key_name)
@@ -251,7 +256,8 @@ def load_config(keymapping_name=None):
     config = {
         **ui_config,
         "input_mappings": input_mappings,
-        **content_config
+        **content_config,
+        "keymapping_name": keymapping_name
     }
     
     # For backward compatibility

@@ -424,9 +424,17 @@ class ViewStateGenerator:
         
         feedback_state = app_state.feedback_state
         
-        # Determine icon type based on feedback message
-        is_success = "accepted" in feedback_state.message.lower() or "selected" in feedback_state.message.lower()
-        is_error = "rejected" in feedback_state.message.lower() or "too fast" in feedback_state.message.lower()
+        # Determine icon type based on feedback message and color
+        # Blue (0,0,255) is used for accepted/selected messages in app_state.py
+        # Yellow (255,255,0) is used for rejected/too fast messages in app_state.py
+        is_success = ("accepted" in feedback_state.message.lower() or 
+                     "selected" in feedback_state.message.lower() or 
+                     feedback_state.color == (0, 0, 255))
+        is_error = ("rejected" in feedback_state.message.lower() or 
+                   "too fast" in feedback_state.message.lower() or 
+                   feedback_state.color == (255, 255, 0))
+        
+        # Debug line removed for production
         is_channel = "channel" in feedback_state.message.lower()
         
         # Skip channels as per feedback instructions - this will be handled differently

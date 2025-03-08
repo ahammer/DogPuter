@@ -425,9 +425,80 @@ class AppState:
             self.input_state.record_input()
             print(f"Exiting waiting mode, processing key: {key_name}")
         
+        # Special handling for z key (code 122) with X-Arcade keyboard mapping
+        if key == pygame.K_z and pygame.key.name(key) == 'z':
+            command = "ball"
+            print(f"Special handling for z key (code 122) -> {command}")
+            
+            # Record input
+            self.input_state.record_input()
+            
+            # Show feedback
+            print(f"Command found for z key: {command}")
+            self.show_feedback(f"{command.capitalize()} selected!", (0, 0, 255))  # Blue for acceptance
+            
+            # Play sound based on command
+            sound_file = f"{command}.wav"
+            try:
+                print(f"Playing sound: {sound_file}")
+                self.play_sound(sound_file)
+            except Exception as e:
+                print(f"Error playing sound: {e}")
+            
+            # Speak command using TTS
+            try:
+                print(f"Speaking command: {command}")
+                self.tts_handler.speak(command)
+            except Exception as e:
+                print(f"Error with TTS: {e}")
+            
+            # Try to play video first, fall back to image if video doesn't exist
+            # Construct video filename from command
+            video_filename = command + ".mp4"
+            video_path = os.path.join("videos", video_filename)
+            video_placeholder_path = video_path + ".txt"
+            
+            # If we're already playing this video, ignore the command
+            if (self.mode == Mode.VIDEO and 
+                self.content_state.video_content.is_playing and 
+                hasattr(self.content_state.video_content, 'current_video_filename') and
+                self.content_state.video_content.current_video_filename == video_filename):
+                print(f"Already playing video: {video_filename}, ignoring repeat command")
+                return
+            
+            # Check if video or placeholder exists
+            if os.path.exists(video_path):
+                # Play the actual video
+                print(f"Playing video for command: {command} (path: {video_path})")
+                result = self.content_state.set_video_by_filename(video_filename)
+                if result:
+                    print(f"Video playback started successfully, switching to VIDEO mode")
+                    self.mode = Mode.VIDEO
+                    # Store the current video filename for repeat detection
+                    self.content_state.video_content.current_video_filename = video_filename
+                else:
+                    # Fall back to image if video playback fails
+                    print(f"Video playback failed, falling back to image")
+                    image_name = f"{command}.jpg"
+                    self._display_image_fallback({"image": image_name, "display_time": DEFAULT_DISPLAY_TIME})
+            elif os.path.exists(video_placeholder_path):
+                # If we have a placeholder, display the image with a message
+                print(f"Video placeholder found for command: {command}, displaying image instead")
+                image_name = f"{command}.jpg"
+                self._display_image_fallback({"image": image_name, "display_time": DEFAULT_DISPLAY_TIME})
+                # Show feedback about placeholder
+                self.show_feedback("Video placeholder - using image instead", (0, 0, 255))
+            else:
+                # Fall back to image
+                image_name = f"{command}.jpg"
+                self._display_image_fallback({"image": image_name, "display_time": DEFAULT_DISPLAY_TIME})
+            
+            # Return early since we've handled this key
+            return
         # Handle keys with mappings
-        if key in INPUT_MAPPINGS:
+        elif key in INPUT_MAPPINGS:
             command = INPUT_MAPPINGS[key]
+            print(f"Found mapping for key {key} in INPUT_MAPPINGS")
             
             # Record input
             self.input_state.record_input()

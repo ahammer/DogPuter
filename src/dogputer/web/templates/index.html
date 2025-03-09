@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DogPuter - Command Management</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <i class="fas fa-paw"></i> DogPuter
+        </div>
+        <nav>
+            <ul>
+                <li class="active"><a href="#manage-tab" class="tab-link">Command Mapping</a></li>
+                <li><a href="#upload-tab" class="tab-link">Upload Videos</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <div id="manage-tab" class="tab-content active">
+            <div class="config-selector">
+                <label for="config-file">Configuration File:</label>
+                <select id="config-file">
+                    <!-- Config files loaded by JavaScript -->
+                </select>
+                <button id="save-mappings" class="btn primary">Save Mappings</button>
+            </div>
+
+            <div class="mapping-container">
+                <div class="mapping-section">
+                    <h2>Available Actions</h2>
+                    <div class="actions-list" id="actions-list">
+                        <!-- Actions loaded by JavaScript -->
+                    </div>
+                </div>
+
+                <div class="mapping-section">
+                    <h2>Keyboard Mapping</h2>
+                    <div class="keyboard" id="keyboard">
+                        <!-- Keyboard layout loaded by JavaScript -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="mapping-info">
+                <h3>Mapping Instructions</h3>
+                <p>Drag action cards from the left panel and drop them onto keyboard keys to create mappings.</p>
+                <p>To remove a mapping, click the "x" button on the mapped action.</p>
+            </div>
+        </div>
+
+        <div id="upload-tab" class="tab-content">
+            <div class="upload-container">
+                <h2>Upload Command Videos</h2>
+                <p>Upload MP4 videos with filenames in the format <strong>command_name.mp4</strong>.</p>
+                <p>The filename becomes the command name for mapping to inputs.</p>
+
+                <div class="upload-area" id="upload-area">
+                    <div class="upload-inner">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <p>Drag & drop video files here or click to select files</p>
+                        <input type="file" id="file-input" accept=".mp4" multiple hidden>
+                    </div>
+                </div>
+
+                <div class="upload-progress" id="upload-progress">
+                    <!-- Upload progress shown here -->
+                </div>
+
+                <div class="upload-list" id="upload-list">
+                    <!-- Uploaded files shown here -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 DogPuter - An interface for dogs</p>
+    </footer>
+
+    <!-- Templates -->
+    <template id="action-card-template">
+        <div class="action-card" draggable="true" data-command="">
+            <div class="action-name"></div>
+            <div class="action-mappings"></div>
+        </div>
+    </template>
+
+    <template id="keyboard-key-template">
+        <div class="key" data-key="">
+            <div class="key-name"></div>
+            <div class="key-command"></div>
+        </div>
+    </template>
+
+    <template id="upload-item-template">
+        <div class="upload-item">
+            <div class="upload-item-name"></div>
+            <div class="upload-item-status"></div>
+            <div class="upload-item-progress">
+                <div class="progress-bar"></div>
+            </div>
+        </div>
+    </template>
+
+    <script src="/static/js/main.js"></script>
+</body>
+</html>

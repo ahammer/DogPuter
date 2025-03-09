@@ -56,6 +56,16 @@ class InputHandler(ABC):
     def update(self):
         """Update the input state"""
         pass
+        
+    def update_mappings(self, new_mappings):
+        """Update the input mappings dynamically
+        
+        Args:
+            new_mappings (dict): New input mappings to use
+        """
+        if self.mapper:
+            self.input_mappings = new_mappings
+            self.mapper.update_mappings(new_mappings)
 
 class KeyboardInputHandler(InputHandler):
     """Keyboard input handler for DogPuter"""

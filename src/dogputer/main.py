@@ -4,6 +4,7 @@ import sys
 import time
 import math
 import random
+import threading
 from dogputer.core.config import (
     INPUT_MAPPINGS, VIDEO_CHANNELS,
     SCREEN_WIDTH, SCREEN_HEIGHT, BACKGROUND_COLOR, DEFAULT_DISPLAY_TIME,
@@ -19,6 +20,15 @@ from dogputer.ui.renderer import Renderer
 from dogputer.ui.animation import AnimationSystem, EasingFunctions
 from dogputer.ui.particle_system import ParticleSystem
 
+# Try to import web interface components, but don't fail if they're not available
+WEB_INTERFACE_AVAILABLE = False
+try:
+    from dogputer.web.app import start_web_server_thread, has_config_changed, get_current_mappings
+    from dogputer.web.qr_code import get_local_ip, generate_qr_code
+    WEB_INTERFACE_AVAILABLE = True
+except ImportError:
+    print("Web interface dependencies not available. Web interface will be disabled.")
+
 class DogPuter:
     def __init__(self, config=None):
         # Store the configuration
@@ -27,6 +37,19 @@ class DogPuter:
         # Initialize pygame
         pygame.init()
         pygame.mixer.init()
+        
+        # Initialize web interface if available
+        self.web_interface_enabled = WEB_INTERFACE_AVAILABLE
+        if self.web_interface_enabled:
+            try:
+                self.web_server_port = 5000
+                self.ip_address = get_local_ip()
+                self.web_url = f"http://{self.ip_address}:{self.web_server_port}"
+                print(f"Starting web interface at {self.web_url}")
+                self.web_server_thread = start_web_server_thread(port=self.web_server_port)
+            except Exception as e:
+                print(f"Failed to start web interface: {e}")
+                self.web_interface_enabled = False
         
         # Set up display
         self.screen_width = SCREEN_WIDTH
@@ -56,6 +79,20 @@ class DogPuter:
         if self.config.get('keymapping_name') == 'x-arcade-kb':
             self.input_config['use_xarcade'] = True
             
+        # Store keymapping name for later config checks
+        print(f"Config keymapping_name: {self.config.get('keymapping_name')}")
+        self.keymapping_name = 'development.json'  # Always set a default
+        
+        if self.config.get('keymapping_name'):
+            km_name = self.config.get('keymapping_name')
+            if isinstance(km_name, str):
+                self.keymapping_name = km_name if km_name.endswith('.json') else f"{km_name}.json"
+                print(f"Using keymapping file: {self.keymapping_name}")
+        
+        # Track last config check time
+        self.last_config_check = time.time()
+        self.config_check_interval = 2.0  # Check every 2 seconds
+        
         from dogputer.io.input_handler import create_input_handler
         self.input_handler = create_input_handler(self.input_config)
         
@@ -68,6 +105,7 @@ class DogPuter:
         # Create fonts
         self.font = pygame.font.SysFont(None, 48)
         self.feedback_font = pygame.font.SysFont(None, 36)
+        self.small_font = pygame.font.SysFont(None, 24)
         
         # Create paw cursor image
         self.paw_cursor = self.create_paw_cursor()
@@ -98,6 +136,19 @@ class DogPuter:
         
         # Initialize particle system
         self.particle_system = ParticleSystem(self.screen_width, self.screen_height)
+        
+        # Generate QR code for web interface if available
+        self.qr_code = None
+        self.qr_available = False
+        self.show_qr_code = False
+        self.last_qr_toggle_time = 0
+        
+        if self.web_interface_enabled:
+            try:
+                self.qr_code = generate_qr_code(self.web_url, size=120)
+                self.qr_available = True
+            except Exception as e:
+                print(f"QR code generation failed: {e}")
         
         # Override methods in app_state to use our implementations
         self.app_state.load_image = self.load_image
@@ -167,6 +218,50 @@ class DogPuter:
             sound.play()
         except pygame.error:
             print(f"Could not play sound: {sound_name}")
+            
+    def render_web_interface_info(self):
+        """Render the web interface IP and QR code in the corner of the screen"""
+        if not self.web_interface_enabled:
+            return
+        
+        # Only show the QR code in waiting mode
+        show_qr = self.app_state.mode == Mode.WAITING
+        
+        # Create a semi-transparent background for better readability
+        margin = 10
+        
+        # Render IP text
+        ip_text = self.small_font.render(f"Web: {self.web_url}", True, WHITE)
+        text_pos = (self.screen_width - ip_text.get_width() - margin, 
+                    self.screen_height - ip_text.get_height() - margin)
+        
+        # Create background rect
+        bg_rect = pygame.Rect(
+            text_pos[0] - 5, 
+            text_pos[1] - 5,
+            ip_text.get_width() + 10,
+            ip_text.get_height() + 10
+        )
+        
+        # Draw background
+        bg_surface = pygame.Surface((bg_rect.width, bg_rect.height), pygame.SRCALPHA)
+        bg_surface.fill((0, 0, 0, 180))  # Semi-transparent black
+        self.screen.blit(bg_surface, (bg_rect.x, bg_rect.y))
+        
+        # Draw text
+        self.screen.blit(ip_text, text_pos)
+        
+        # Show QR code if in waiting mode and available
+        if show_qr and self.qr_code and self.qr_available:
+            qr_size = self.qr_code.get_size()
+            qr_pos = (
+                self.screen_width - qr_size[0] - margin,
+                self.screen_height - qr_size[1] - ip_text.get_height() - margin*2
+            )
+            
+            # Draw QR code directly without additional background
+            # Just draw it to the screen since it already has the margins
+            self.screen.blit(self.qr_code, qr_pos)
 
     def run(self):
         """Main game loop"""
@@ -220,6 +315,19 @@ class DogPuter:
                 elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                     # Exit on ESC key
                     running = False
+            
+            # Check for configuration changes if web interface is enabled
+            current_time = time.time()
+            if self.web_interface_enabled and current_time - self.last_config_check > self.config_check_interval:
+                self.last_config_check = current_time
+                if has_config_changed():
+                    print("Configuration changed, reloading input mappings...")
+                    new_mappings = get_current_mappings(self.keymapping_name)
+                    if new_mappings:
+                        # Update the input handler with new mappings
+                        self.input_config['input_mappings'] = new_mappings
+                        self.input_handler.update_mappings(new_mappings)
+                        print("Input mappings reloaded successfully")
             
             # Update state
             self.app_state.update(delta_time)
@@ -285,6 +393,10 @@ class DogPuter:
             
             # Draw particles on top
             self.particle_system.draw(self.screen)
+            
+            # Render web interface info if enabled
+            if self.web_interface_enabled:
+                self.render_web_interface_info()
             
             # Update display
             pygame.display.flip()

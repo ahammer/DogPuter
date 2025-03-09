@@ -14,6 +14,7 @@ DogPuter provides an engaging interface for dogs, allowing them to interact with
 - Customizable UI with animated elements
 - Channel-based content organization
 - Configurable key mappings via JSON files
+- Web interface for easy command mapping and video upload
 
 ## Repository Structure
 
@@ -26,6 +27,7 @@ dogputer/
 │       ├── core/          # Core application functionality
 │       ├── ui/            # User interface components
 │       ├── io/            # Input/output handling
+│       ├── web/           # Web interface components
 │       └── utils/         # Utility functions and helpers
 ├── tests/                 # Test suite
 │   ├── unit/              # Unit tests
@@ -48,6 +50,8 @@ dogputer/
 - Pygame
 - MoviePy
 - pyttsx3 (for TTS functionality)
+- Flask (for web interface)
+- QR Code (for web interface access)
 
 ### Installation
 
@@ -86,6 +90,21 @@ python -m dogputer --config x-arcade
 # List available configurations
 python -m dogputer --list-configs
 ```
+
+### Web Interface
+
+DogPuter now includes a web interface that runs alongside the main application, allowing you to:
+
+1. View and edit command mappings from any device on your network
+2. Upload new videos in the command_name.mp4 format
+3. Manage all registered actions (commands with associated videos)
+
+The web interface is automatically started when you run the application, and:
+- Shows the URL and QR code on the main DogPuter screen
+- Runs on port 5000 by default
+- Can be accessed from any device on the same network
+
+For more details, see the [Web Interface Documentation](docs/web_interface.md).
 
 ### Configuration Files
 

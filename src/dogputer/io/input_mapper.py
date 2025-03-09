@@ -23,6 +23,15 @@ class InputMapper:
             input_mappings: Dictionary mapping key codes or tuples to command names
         """
         self.input_mappings = input_mappings or {}
+        
+    def update_mappings(self, new_mappings):
+        """
+        Update the input mappings dictionary
+        
+        Args:
+            new_mappings: New dictionary mapping key codes or tuples to command names
+        """
+        self.input_mappings = new_mappings
     
     def map_event(self, event):
         """

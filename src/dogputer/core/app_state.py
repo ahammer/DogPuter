@@ -10,17 +10,15 @@ from dogputer.core.config import (
 class Mode(enum.Enum):
     """Application modes"""
     WAITING = 0
-    IMAGE = 1
-    VIDEO = 2
-    TEXT = 3
+    VIDEO = 1
+    TEXT = 2  # Only used for fallback when videos can't be loaded
 
 class ContentType(enum.Enum):
     """Content types"""
     NONE = 0
-    IMAGE = 1
-    VIDEO = 2
-    TEXT = 3
-    WAITING = 4
+    VIDEO = 1
+    TEXT = 2  # Only used for fallback when videos can't be loaded
+    WAITING = 3
 
 class InputState:
     """Manages input state and cooldown"""
@@ -157,20 +155,42 @@ class TextContent:
         self.display_end_time = 0
         self.bg_color = bg_color
     
-    def set_text(self, text, font, display_time=3.0, screen_width=800, screen_height=600):
-        """Set the text to display"""
+    def set_text(self, text, font, display_time=5.0, screen_width=800, screen_height=600):
+        """Set the text to display in the top left corner"""
         self.text = text
         
         # Create a surface for the text
-        self.surface = pygame.Surface((screen_width, screen_height))
-        self.surface.fill(self.bg_color)
+        self.surface = pygame.Surface((screen_width, screen_height), pygame.SRCALPHA)
         
         # Render the text
-        text_surface = font.render(text, True, (255, 255, 255))
-        text_rect = text_surface.get_rect(center=(screen_width/2, screen_height/2))
-        self.surface.blit(text_surface, text_rect)
+        from dogputer.core.config import YELLOW_PRIMARY, BLUE_PRIMARY
         
-        # Set display time
+        # Create a larger, more visible font for dogs
+        large_font = pygame.font.SysFont(None, 72)
+        
+        # Add a contrasting background for better visibility
+        text_bg_surface = large_font.render(text, True, BLUE_PRIMARY)
+        text_fg_surface = large_font.render(text, True, YELLOW_PRIMARY)
+        
+        # Position in top left with some padding
+        padding = 20
+        text_rect = text_fg_surface.get_rect(topleft=(padding, padding))
+        
+        # Draw text with outline for better visibility
+        outline_thickness = 3
+        for offset_x in range(-outline_thickness, outline_thickness + 1, outline_thickness):
+            for offset_y in range(-outline_thickness, outline_thickness + 1, outline_thickness):
+                if offset_x == 0 and offset_y == 0:
+                    continue
+                shadow_rect = text_rect.copy()
+                shadow_rect.x += offset_x
+                shadow_rect.y += offset_y
+                self.surface.blit(text_bg_surface, shadow_rect)
+        
+        # Draw main text
+        self.surface.blit(text_fg_surface, text_rect)
+        
+        # Set display time to 5 seconds for fallback text display
         self.display_end_time = time.time() + display_time
     
     def update(self, delta_time):
@@ -273,12 +293,7 @@ class ContentState:
     
     def update(self, delta_time):
         """Update content state based on type"""
-        if self.current_type == ContentType.IMAGE:
-            # If image display has ended, return to waiting screen
-            if not self.image_content.update(delta_time):
-                self.current_type = ContentType.WAITING
-                return True
-        elif self.current_type == ContentType.TEXT:
+        if self.current_type == ContentType.TEXT:
             # If text display has ended, return to waiting screen
             if not self.text_content.update(delta_time):
                 self.current_type = ContentType.WAITING
@@ -370,9 +385,6 @@ class AppState:
         if self.content_state.current_type == ContentType.WAITING and self.mode != Mode.WAITING:
             print(f"Syncing state: Setting mode to WAITING to match content type")
             self.mode = Mode.WAITING
-        elif self.content_state.current_type == ContentType.IMAGE and self.mode != Mode.IMAGE:
-            print(f"Syncing state: Setting mode to IMAGE to match content type")
-            self.mode = Mode.IMAGE
         elif self.content_state.current_type == ContentType.VIDEO and self.mode != Mode.VIDEO:
             print(f"Syncing state: Setting mode to VIDEO to match content type")
             self.mode = Mode.VIDEO
@@ -389,9 +401,6 @@ class AppState:
             if self.content_state.current_type == ContentType.WAITING:
                 self.mode = Mode.WAITING
                 print(f"Mode changed to WAITING")
-            elif self.content_state.current_type == ContentType.IMAGE:
-                self.mode = Mode.IMAGE
-                print(f"Mode changed to IMAGE")
             elif self.content_state.current_type == ContentType.VIDEO:
                 self.mode = Mode.VIDEO
                 print(f"Mode changed to VIDEO")

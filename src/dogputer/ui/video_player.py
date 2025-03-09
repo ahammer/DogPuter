@@ -16,7 +16,7 @@ from moviepy import VideoFileClip
 class VideoPlayer:
     """Video player class for DogPuter"""
     
-    def __init__(self, screen, videos_dir="videos"):
+    def __init__(self, screen, videos_dir="media/videos"):
         """Initialize the video player"""
         self.screen = screen
         self.videos_dir = videos_dir

@@ -46,8 +46,6 @@ class ViewStateGenerator:
         # Generate view based on current mode
         if app_state.mode == Mode.WAITING:
             self._generate_waiting_screen_view(view_state, app_state)
-        elif app_state.mode == Mode.IMAGE:
-            self._generate_image_view(view_state, app_state)
         elif app_state.mode == Mode.VIDEO:
             self._generate_video_view(view_state, app_state)
         elif app_state.mode == Mode.TEXT:
@@ -335,7 +333,7 @@ class ViewStateGenerator:
         ))
     
     def _generate_video_view(self, view_state, app_state):
-        """Generate view state for video display with dog-friendly enhancements"""
+        """Generate view state for video display with dog-friendly enhancements and command display"""
         from dogputer.core.config import BLUE_PRIMARY, YELLOW_PRIMARY, WHITE, VIDEO_CHANNELS
         
         video_content = app_state.content_state.video_content
@@ -394,7 +392,48 @@ class ViewStateGenerator:
             end_pos = (self.screen_width, self.screen_height - corner_length)
             pygame.draw.line(frame_surface, BLUE_PRIMARY, start_pos, end_pos, frame_thickness)
             
-            # Removed playing indicator dots as per user request
+            # Display command name in top left if we have a current video filename
+            if hasattr(video_content, 'current_video_filename') and video_content.current_video_filename:
+                command_name = video_content.current_video_filename.split('.')[0].upper()
+                
+                # Create command display surface
+                command_surface = pygame.Surface((300, 80), pygame.SRCALPHA)
+                
+                # Create larger, dog-friendly font
+                large_font = pygame.font.SysFont(None, 64)
+                
+                # Add a contrasting background for better visibility
+                text_bg_surface = large_font.render(command_name, True, BLUE_PRIMARY)
+                text_fg_surface = large_font.render(command_name, True, YELLOW_PRIMARY)
+                
+                # Position text
+                text_rect = text_fg_surface.get_rect(topleft=(10, 10))
+                
+                # Draw text with outline for better visibility
+                outline_thickness = 3
+                for offset_x in range(-outline_thickness, outline_thickness + 1, outline_thickness):
+                    for offset_y in range(-outline_thickness, outline_thickness + 1, outline_thickness):
+                        if offset_x == 0 and offset_y == 0:
+                            continue
+                        shadow_rect = text_rect.copy()
+                        shadow_rect.x += offset_x
+                        shadow_rect.y += offset_y
+                        command_surface.blit(text_bg_surface, shadow_rect)
+                
+                # Draw main text
+                command_surface.blit(text_fg_surface, text_rect)
+                
+                # Add a pulsing effect
+                pulse = 0.85 + 0.15 * abs(math.sin(current_time * 1.2))
+                
+                # Add command overlay to the view
+                view_state.add_command(RenderCommand(
+                    "surface",
+                    surface=command_surface,
+                    position=(20, 20),
+                    alpha=int(255 * pulse),
+                    z_index=10
+                ))
             
             view_state.add_command(RenderCommand(
                 "surface", 

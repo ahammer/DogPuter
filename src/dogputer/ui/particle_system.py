@@ -34,6 +34,32 @@ class Particle:
     
     def update(self, delta_time):
         """Update particle position and attributes"""
+        # Apply pattern-based motion if the particle has a pattern
+        if hasattr(self, 'pattern'):
+            # Update pattern time
+            if not hasattr(self, 'pattern_time'):
+                self.pattern_time = 0
+            self.pattern_time += delta_time
+            
+            # Apply pattern-specific motion
+            if self.pattern == 'wiggle':
+                # Side-to-side wiggle effect
+                wiggle_strength = 2.0
+                wiggle_speed = 5.0
+                # Add a sideways velocity component that oscillates
+                self.vel_x += math.sin(self.pattern_time * wiggle_speed) * wiggle_strength
+                
+            elif self.pattern == 'spiral':
+                # Spiral effect - circular motion combined with upward drift
+                spiral_radius = 1.0
+                spiral_speed = 3.0
+                # Calculate spiral motion components
+                spiral_x = math.cos(self.pattern_time * spiral_speed) * spiral_radius
+                spiral_y = math.sin(self.pattern_time * spiral_speed) * spiral_radius
+                # Add to velocity
+                self.vel_x = spiral_x * 2
+                self.vel_y = -1.5 + spiral_y  # Upward drift with spiral
+        
         # Update position
         self.x += self.vel_x * delta_time
         self.y += self.vel_y * delta_time
@@ -49,9 +75,11 @@ class Particle:
         self.vel_x *= 0.98
         self.vel_y *= 0.98
         
-        # Decrease size slightly over time
+        # Decrease size slightly over time, but slower for better visibility
         if self.size > 1:
-            self.size = max(1, self.size - (delta_time * 2))
+            # Slower size reduction for better visibility
+            size_reduction_rate = 1.0 if hasattr(self, 'pattern') else 2.0
+            self.size = max(1, self.size - (delta_time * size_reduction_rate))
         
         return self.lifetime > 0
     
@@ -154,28 +182,61 @@ class ParticleSystem:
             self.add_particle(x, y, color=color, size=size)
     
     def create_ambient(self, region_rect=None, count=10, color=None, 
-                        gravity=0, min_lifetime=0.5, max_lifetime=2.0):
-        """Create ambient particles within a region"""
+                       gravity=0, min_lifetime=0.5, max_lifetime=2.0):
+        """Create ambient particles within a region with enhanced visuals for dogs"""
         region_rect = region_rect or pygame.Rect(0, 0, self.screen_width, self.screen_height)
         
+        # Enhanced version with more directed, intentional motion that dogs can track
         for i in range(min(count, PARTICLE_MAX_COUNT - len(self.particles))):
             # Random position within region
             x = random.uniform(region_rect.left, region_rect.right)
             y = random.uniform(region_rect.top, region_rect.bottom)
             
-            # Create particle with gentle upward motion (good for ambient effects)
-            lifetime = random.uniform(min_lifetime, max_lifetime)
+            # Longer lifetime for better visibility to dogs
+            lifetime = random.uniform(min_lifetime * 1.5, max_lifetime * 1.5)
             
-            # Gentle random motion with optional gravity
-            direction = random.uniform(math.pi/4, 3*math.pi/4)  # Upward-ish
-            speed = random.uniform(5, 20)  # Gentle
+            # More varied motion patterns - dogs notice change and movement
+            pattern = random.choice([
+                'float_up',   # Gentle upward drift
+                'wiggle',     # Side-to-side wiggle
+                'spiral',     # Spiral motion
+                'random',     # Random motion
+            ])
             
+            # Create particle with pattern-specific settings
+            if pattern == 'float_up':
+                # Upward motion
+                direction = random.uniform(math.pi/4, 3*math.pi/4)  # Upward-ish
+                speed = random.uniform(10, 25)  # Slightly faster
+                
+            elif pattern == 'wiggle':
+                # Horizontal motion with wiggle
+                direction = random.choice([0, math.pi])  # Left or right
+                speed = random.uniform(5, 15)
+                
+            elif pattern == 'spiral':
+                # Upward spiral starting direction
+                direction = math.pi/2  # Up
+                speed = random.uniform(5, 15)
+                
+            else:  # random
+                direction = random.uniform(0, 2 * math.pi)
+                speed = random.uniform(5, 20)
+            
+            # Create base particle
             particle = Particle(x, y, color=color, lifetime=lifetime,
-                               speed=speed, direction=direction)
+                                speed=speed, direction=direction)
+            
+            # Store pattern for update logic
+            particle.pattern = pattern
+            particle.pattern_time = 0
             
             # Add gravity effect if specified
             if gravity != 0:
                 particle.vel_y += gravity
+                
+            # Make particles slightly larger for better dog visibility
+            particle.size *= 1.2
                 
             self.particles.append(particle)
     

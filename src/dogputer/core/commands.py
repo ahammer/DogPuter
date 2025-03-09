@@ -50,20 +50,19 @@ class ContentCommand(Command):
         except Exception as e:
             print(f"Error with TTS: {e}")
         
-        # Try to play video first, fall back to image if video doesn't exist
+        # Try to play video
         video_filename = f"{self.content_name}.mp4"
-        video_path = os.path.join("videos", video_filename)
-        video_placeholder_path = video_path + ".txt"
+        video_path = os.path.join("media/videos", video_filename)
         
         # If we're already playing this video, ignore the command
-        if (app_state.mode.name == "VIDEO" and 
+        if (app_state.mode == Mode.VIDEO and 
             app_state.content_state.video_content.is_playing and 
             hasattr(app_state.content_state.video_content, 'current_video_filename') and
             app_state.content_state.video_content.current_video_filename == video_filename):
             print(f"Already playing video: {video_filename}, ignoring repeat command")
             return
             
-        # Check if video or placeholder exists
+        # Check if video exists
         if os.path.exists(video_path):
             # Play the actual video
             print(f"Playing video for command: {self.content_name} (path: {video_path})")
@@ -74,33 +73,22 @@ class ContentCommand(Command):
                 # Store the current video filename for repeat detection
                 app_state.content_state.video_content.current_video_filename = video_filename
             else:
-                # Fall back to image if video playback fails
-                print(f"Video playback failed, falling back to image")
-                self._display_image_fallback(app_state)
-        elif os.path.exists(video_placeholder_path):
-            # If we have a placeholder, display the image with a message
-            print(f"Video placeholder found for command: {self.content_name}, displaying image instead")
-            self._display_image_fallback(app_state)
-            # Show feedback about placeholder
-            app_state.show_feedback("Video placeholder - using image instead", (0, 0, 255))
+                # Display text as fallback when video can't be loaded
+                self._display_text_fallback(app_state)
         else:
-            # Fall back to image
-            self._display_image_fallback(app_state)
+            # Display text as fallback when video doesn't exist
+            self._display_text_fallback(app_state)
     
-    def _display_image_fallback(self, app_state):
-        """Display image as fallback when video is not available"""
-        from dogputer.core.config import DEFAULT_DISPLAY_TIME
+    def _display_text_fallback(self, app_state):
+        """Display command name as text when video is not available"""
+        # Show the command name for 5 seconds
+        print(f"Video not available for command: {self.content_name}, displaying text instead")
         
-        image_name = f"{self.content_name}.jpg"
-        print(f"Loading image fallback: {image_name}")
-        image = app_state.load_image(image_name)
-        if image:
-            print(f"Image loaded successfully, displaying for {DEFAULT_DISPLAY_TIME} seconds")
-            app_state.content_state.set_image(image, DEFAULT_DISPLAY_TIME)
-            app_state.mode = Mode.IMAGE
-        else:
-            print(f"Failed to load image: {image_name}")
-            app_state.show_feedback(f"Failed to load image: {image_name}", (255, 0, 0))
+        # Display the command as text
+        app_state.content_state.set_text(self.content_name.upper(), app_state.font, 5.0, 
+                                       app_state.screen_width, app_state.screen_height)
+        app_state.mode = Mode.TEXT
+        app_state.show_feedback(f"{self.content_name.capitalize()} command", (0, 0, 255))
 
 
 class VideoChannelCommand(Command):

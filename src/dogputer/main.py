@@ -36,9 +36,9 @@ class DogPuter:
         pygame.display.set_caption("DogPuter")
         
         # Set up directories
-        self.sounds_dir = "sounds"
-        self.images_dir = "images"
-        self.videos_dir = "videos"
+        self.sounds_dir = "media/sounds"
+        self.images_dir = "media/images"
+        self.videos_dir = "media/videos"
         
         # Create directories if they don't exist
         os.makedirs(self.sounds_dir, exist_ok=True)

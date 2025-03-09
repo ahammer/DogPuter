@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Script to create videos from existing images for the DogPuter application.
-This script takes the images in the 'images' directory and creates MP4 videos with zoom/pan effects.
+This script takes the images in the 'media/images' directory and creates MP4 videos with zoom/pan effects.
 """
 
 import os
@@ -75,7 +75,7 @@ def create_video_from_image(image_path, output_filename, duration=5.0, effect="z
 def main():
     """Main function to create videos from existing images"""
     # Create videos directory if it doesn't exist
-    os.makedirs("videos", exist_ok=True)
+    os.makedirs("media/videos", exist_ok=True)
     
     # List of effects to cycle through
     effects = ["zoom", "pan_right", "pan_left", "pan_up", "pan_down"]
@@ -86,8 +86,8 @@ def main():
         if "image" in mapping:
             # Extract the name without extension
             name = os.path.splitext(mapping["image"])[0].capitalize()
-            image_path = os.path.join("images", mapping["image"])
-            video_path = os.path.join("videos", name.lower() + ".mp4")
+            image_path = os.path.join("media/images", mapping["image"])
+            video_path = os.path.join("media/videos", name.lower() + ".mp4")
             
             # Check if the image exists
             if os.path.exists(image_path):
@@ -102,14 +102,14 @@ def main():
     
     # Create videos for video channels
     for channel in VIDEO_CHANNELS:
-        video_path = os.path.join("videos", channel["video"])
+        video_path = os.path.join("media/videos", channel["video"])
         
         # Check if we already created this video (might be a duplicate of a key mapping)
         if os.path.exists(video_path):
             continue
         
         # Check if there's a channel-specific image
-        channel_image_path = os.path.join("images", f"{channel['name'].lower()}_channel.jpg")
+        channel_image_path = os.path.join("media/images", f"{channel['name'].lower()}_channel.jpg")
         
         # If not, try to find a matching image from the key mappings
         if not os.path.exists(channel_image_path):
@@ -117,7 +117,7 @@ def main():
             found = False
             for key, mapping in KEY_MAPPINGS.items():
                 if "image" in mapping and mapping["image"].lower().startswith(channel["name"].lower()):
-                    channel_image_path = os.path.join("images", mapping["image"])
+                    channel_image_path = os.path.join("media/images", mapping["image"])
                     found = True
                     break
             
@@ -133,10 +133,10 @@ def main():
         create_video_from_image(channel_image_path, video_path, duration=5.0, effect=effect)
     
     # Clean up any .txt placeholder files
-    for filename in os.listdir("videos"):
+    for filename in os.listdir("media/videos"):
         if filename.endswith(".mp4.txt"):
             try:
-                os.remove(os.path.join("videos", filename))
+                os.remove(os.path.join("media/videos", filename))
                 print(f"Removed placeholder file: {filename}")
             except Exception as e:
                 print(f"Error removing placeholder file: {e}")

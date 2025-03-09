@@ -230,11 +230,52 @@ class DogPuter:
             # Update particle system
             self.particle_system.update(delta_time)
             
-            # Create ambient particles in waiting mode
+            # Create ambient particles in waiting mode with a more soothing pattern
             if self.app_state.mode == Mode.WAITING:
-                # Add ambient particles occasionally
-                if random.random() < 0.05:  # 5% chance each frame
-                    self.particle_system.create_ambient(count=2, color=YELLOW_PRIMARY)
+                # Lower the frequency for a more subtle effect
+                if random.random() < 0.02:  # 2% chance each frame instead of 5%
+                    # Use current time to create slowly flowing particle patterns
+                    current_time = time.time()
+                    
+                    # Determine which region of the screen to create particles in
+                    # Shift this gradually over time for a floating, gentle effect
+                    region_shift_x = math.sin(current_time * 0.1) * 0.3
+                    region_shift_y = math.cos(current_time * 0.08) * 0.2
+                    
+                    region_x = self.screen_width * (0.5 + region_shift_x)
+                    region_y = self.screen_height * (0.5 + region_shift_y)
+                    region_width = self.screen_width * 0.4
+                    region_height = self.screen_height * 0.4
+                    
+                    region = pygame.Rect(
+                        region_x - region_width/2,
+                        region_y - region_height/2,
+                        region_width,
+                        region_height
+                    )
+                    
+                    # Create more subtle particles with a softer appearance
+                    # Use primarily white/blue-tinted colors for a calming effect
+                    # Choose color based on the current time for a gentle shifting effect
+                    color_shift = (math.sin(current_time * 0.2) + 1) / 2  # 0 to 1
+                    
+                    if color_shift > 0.7:  # Occasionally use yellow for visual interest
+                        particle_color = YELLOW_PRIMARY
+                    else:  # Mostly use soft blue-white
+                        r = int(220 + color_shift * 35)
+                        g = int(220 + color_shift * 35)
+                        b = int(240 + color_shift * 15)
+                        particle_color = (r, g, b)
+                    
+                    # Create particles with longer minimum lifetime for more soothing flow
+                    self.particle_system.create_ambient(
+                        region_rect=region,
+                        count=3,  # Slightly more particles per batch
+                        color=particle_color,
+                        gravity=-0.1,  # Slight upward drift
+                        min_lifetime=1.5,  # Longer lifetime
+                        max_lifetime=3.0  # Longer max lifetime
+                    )
             
             # Generate view state
             view_state = self.view_state_generator.generate_view_state(self.app_state)

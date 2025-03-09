@@ -201,20 +201,17 @@ class WaitingScreenContent:
     """Manages waiting screen content state"""
     
     def __init__(self, bg_color):
-        self.animation_frame = 0
         self.animation_time = 0
         self.bg_color = bg_color
         self.paw_cursor = None
+        # Remove animation_frame as we now use continuous smooth animation
+        # in view_state.py instead of discrete frames
     
     def update(self, delta_time):
         """Update waiting screen state"""
-        current_time = time.time()
-        
-        # Update animation frame every 0.5 seconds
-        if current_time - self.animation_time > 0.5:
-            self.animation_frame = (self.animation_frame + 1) % 4
-            self.animation_time = current_time
-        
+        # We no longer need to update animation frames
+        # The view_state now handles continuous smooth animation
+        # based on the current time
         return True
 
 class FeedbackState:

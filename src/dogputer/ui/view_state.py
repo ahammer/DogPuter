@@ -64,36 +64,105 @@ class ViewStateGenerator:
         """Generate view state for waiting screen"""
         waiting_content = app_state.content_state.waiting_content
         
-        # Create background with a more dog-friendly color
+        # Create soothing background with enhanced patterns
         bg_surface = pygame.Surface((self.screen_width, self.screen_height))
         bg_surface.fill(waiting_content.bg_color)
         
-        # Add subtle, non-chaotic background pattern (less random, more harmonious)
+        # Add flowing, harmonious background pattern
         current_time = time.time()
         
-        # Create a few gentle gradients in the background
-        for i in range(5):  # Reduced from 20 to 5 to be less chaotic
-            # Use more predictable positions instead of fully random
-            angle = math.pi * 2 * (i / 5) + current_time * 0.1  # Slow rotation
-            distance = self.screen_height / 4
+        # Create a flowing wave pattern across the background
+        wave_surface = pygame.Surface((self.screen_width, self.screen_height), pygame.SRCALPHA)
+        
+        # Draw flowing wave patterns that slowly shift over time
+        wave_count = 6  # Number of wave layers
+        for wave in range(wave_count):
+            # Each wave has slightly different parameters for visual variety
+            wave_speed = 0.05 + (wave * 0.01)  # Different speeds for each wave
+            wave_amplitude = 40 + (wave * 5)   # Different heights
+            wave_length = 200 + (wave * 30)    # Different wavelengths
+            wave_offset = current_time * wave_speed
+            wave_color = (220, 220, 255)       # Subtle blue-white 
+            wave_alpha = 5 + wave              # Progressive transparency
             
-            x = int(self.screen_width/2 + math.cos(angle) * distance)
-            y = int(self.screen_height/2 + math.sin(angle) * distance)
+            # Draw multiple waves as smooth curves
+            points = []
+            for x in range(0, self.screen_width + 20, 20):  # Sample points along the wave
+                # Calculate y position using sine wave with slight randomness
+                phase = x / wave_length + wave_offset
+                y = math.sin(phase) * wave_amplitude + (self.screen_height * (0.3 + (wave * 0.1)))
+                
+                # Add some gentle randomness to y-position for organic feel
+                y += math.sin(phase * 3.7) * (wave_amplitude * 0.2)
+                
+                points.append((x, int(y)))
             
-            size = 100  # Fixed size instead of random
-            alpha = 15  # Fixed low alpha for subtlety
+            # Draw smoothed wave bands
+            if len(points) > 2:
+                for i in range(len(points) - 1):
+                    # Create a gradient between points for smoother appearance
+                    start_pos = points[i]
+                    end_pos = points[i + 1]
+                    
+                    # Draw multiple lines with decreasing alpha to create soft effect
+                    for offset in range(15):
+                        line_alpha = max(0, wave_alpha - offset // 2)
+                        if line_alpha <= 0:
+                            continue
+                            
+                        pygame.draw.line(
+                            wave_surface,
+                            (*wave_color, line_alpha),
+                            (start_pos[0], start_pos[1] + offset),
+                            (end_pos[0], end_pos[1] + offset),
+                            2
+                        )
+        
+        # Add the wave surface to the background
+        bg_surface.blit(wave_surface, (0, 0))
+        
+        # Create smooth gradient orbs that slowly pulse and move
+        orb_count = 3  # Fewer orbs for more calm effect
+        for i in range(orb_count):
+            # Create a gentle pulsing movement
+            pulse_time = current_time * 0.2  # Slower timing for smoother feel
+            pulse_factor = i / orb_count  # Spread out the pulses
+            pulse_phase = pulse_time + (pulse_factor * math.pi * 2)
             
-            # Create gradient glow
-            for radius in range(size, 0, -10):
-                fade_alpha = int(alpha * (radius / size))
+            # Calculate smooth orbital positions
+            orbit_x = self.screen_width * (0.25 + (i * 0.25))  # Evenly spread horizontally
+            orbit_y = self.screen_height * (0.3 + 0.1 * math.sin(pulse_phase * 0.5))
+            
+            # Size that gently pulses
+            base_size = 180 - (i * 20)  # Decreasing sizes
+            size_variation = 20 * math.sin(pulse_phase)
+            size = int(base_size + size_variation)
+            
+            # Very subtle alpha pulsing
+            base_alpha = 12 - (i * 2)  # Subtle alpha
+            alpha_variation = 4 * math.sin(pulse_phase * 1.3)
+            alpha = base_alpha + alpha_variation
+            
+            # Create a soft gradient orb
+            for radius in range(size, 0, -15):  # Larger steps for better performance
+                # Fade alpha towards the edges - ensure positive integer
+                fade_factor = radius / size
+                fade_alpha = max(0, int(alpha * fade_factor * fade_factor))  # Quadratic falloff for softer edges
+                
+                # Create a gentle color gradient (subtle yellow to blue shift)
+                color_shift = math.sin(pulse_phase + (radius / size) * math.pi)
+                r = min(255, max(0, int(255 * (0.8 + 0.2 * color_shift))))
+                g = min(255, max(0, int(255 * (0.8 + 0.1 * color_shift))))
+                b = min(255, max(0, int(255 * (0.8 + 0.2 * (1 - color_shift)))))
+                
                 gradient_surface = pygame.Surface((radius*2, radius*2), pygame.SRCALPHA)
                 pygame.draw.circle(
                     gradient_surface, 
-                    (255, 255, 255, fade_alpha), 
+                    (r, g, b, fade_alpha), 
                     (radius, radius), 
                     radius
                 )
-                bg_surface.blit(gradient_surface, (x - radius, y - radius))
+                bg_surface.blit(gradient_surface, (int(orbit_x - radius), int(orbit_y - radius)))
             
         view_state.add_command(RenderCommand("surface", surface=bg_surface, position=(0, 0), z_index=0))
         
@@ -138,53 +207,59 @@ class ViewStateGenerator:
         sub_rect = sub_text.get_rect(center=(self.screen_width/2, self.screen_height/2 + 30))
         view_state.add_command(RenderCommand("surface", surface=sub_text, position=sub_rect, z_index=2))
         
-        # Draw animated paw cursor with enhanced animation
+        # Draw soothing animated paw cursor with smooth motion
         if app_state.paw_cursor:
-            # More dynamic animation curve for more interesting motion
-            curve_x = self.screen_width/2 + math.sin(current_time * 1.5) * 200
-            curve_y = self.screen_height/2 + 100 + math.cos(current_time * 1.2) * 50
+            # Use a gentle, smooth floating animation instead of jumping between positions
+            # Calculate a smooth orbit path for the paw to follow
+            orbit_radius_x = 120  # Horizontal radius
+            orbit_radius_y = 40   # Vertical radius (flatter orbit)
+            orbit_speed = 0.3     # Slower speed for more soothing motion
             
-            # Position based on animation frame but with added motion
-            base_positions = [
-                (self.screen_width/2 - 180, self.screen_height/2 + 100),  # Left
-                (self.screen_width/2 - 60, self.screen_height/2 + 120),   # Middle-left
-                (self.screen_width/2 + 60, self.screen_height/2 + 120),   # Middle-right
-                (self.screen_width/2 + 180, self.screen_height/2 + 100)   # Right
-            ]
+            # Calculate position along the orbital path
+            orbit_x = self.screen_width/2 + math.sin(current_time * orbit_speed) * orbit_radius_x
+            orbit_y = self.screen_height/2 + 120 + math.cos(current_time * orbit_speed) * orbit_radius_y
             
-            # Add some randomness to make more interesting for dogs
-            jitter_x = random.randint(-5, 5)
-            jitter_y = random.randint(-5, 5)
+            # Add very subtle breathing animation to the paw (slight scale pulsing)
+            breath_scale = 1.0 + 0.03 * math.sin(current_time * 0.8)  # Subtle 3% size variation
             
-            # Get base position and add dynamic movement
-            base_pos = base_positions[waiting_content.animation_frame]
-            paw_x = base_pos[0] + jitter_x
-            paw_y = base_pos[1] + jitter_y
-            
-            # Add animation path guidance
-            next_frame = (waiting_content.animation_frame + 1) % 4
-            next_pos = base_positions[next_frame]
-            
-            # Draw a hint path to the next position
-            path_surface = pygame.Surface((self.screen_width, self.screen_height), pygame.SRCALPHA)
-            for i in range(1, 5):
-                # Interpolate points between current and next position
-                t = i / 5.0
-                path_x = int(base_pos[0] + (next_pos[0] - base_pos[0]) * t)
-                path_y = int(base_pos[1] + (next_pos[1] - base_pos[1]) * t)
-                path_size = int(10 * (1 - t))  # Decreasing size along the path
+            # If we want to scale the paw cursor based on breathing
+            if breath_scale != 1.0:
+                original_size = app_state.paw_cursor.get_size()
+                scaled_size = (int(original_size[0] * breath_scale), int(original_size[1] * breath_scale))
+                scaled_paw = pygame.transform.smoothscale(app_state.paw_cursor, scaled_size)
                 
-                # Skip drawing paths on first frame
-                if waiting_content.animation_frame == 0 and next_frame == 1:
-                    pygame.draw.circle(
-                        path_surface, 
-                        (*YELLOW_PRIMARY, 100 * (1 - t)),
-                        (path_x, path_y), 
-                        path_size
-                    )
+                # Center the scaled paw at the orbit position
+                paw_x = orbit_x - scaled_size[0] / 2
+                paw_y = orbit_y - scaled_size[1] / 2
+                
+                view_state.add_command(RenderCommand("surface", surface=scaled_paw, position=(paw_x, paw_y), z_index=3))
+            else:
+                # Center the paw at the orbit position
+                paw_x = orbit_x - app_state.paw_cursor.get_width() / 2
+                paw_y = orbit_y - app_state.paw_cursor.get_height() / 2
+                
+                view_state.add_command(RenderCommand("surface", surface=app_state.paw_cursor, position=(paw_x, paw_y), z_index=3))
             
-            view_state.add_command(RenderCommand("surface", surface=path_surface, position=(0, 0), z_index=2))
-            view_state.add_command(RenderCommand("surface", surface=app_state.paw_cursor, position=(paw_x, paw_y), z_index=3))
+            # Add a subtle glow beneath the paw
+            glow_surface = pygame.Surface((160, 160), pygame.SRCALPHA)
+            glow_color = YELLOW_PRIMARY
+            glow_alpha = int(15 + 10 * math.sin(current_time * 0.5))  # Subtle pulsing glow
+            
+            # Create a soft radial gradient
+            for radius in range(70, 0, -5):
+                alpha = glow_alpha * (radius / 70)
+                pygame.draw.circle(
+                    glow_surface,
+                    (*glow_color, alpha),
+                    (80, 80),
+                    radius
+                )
+            
+            # Position glow centered beneath the paw
+            glow_x = orbit_x - 80
+            glow_y = orbit_y - 80
+            
+            view_state.add_command(RenderCommand("surface", surface=glow_surface, position=(glow_x, glow_y), z_index=2))
     
     def _generate_image_view(self, view_state, app_state):
         """Generate view state for image display with enhanced dog-friendly features"""

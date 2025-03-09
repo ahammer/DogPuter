@@ -36,6 +36,46 @@ class VideoPlayer:
         # Create videos directory if it doesn't exist
         os.makedirs(self.videos_dir, exist_ok=True)
     
+    def _scale_preserve_ratio(self, surface):
+        """
+        Scale a surface to fit the screen while preserving aspect ratio.
+        This will crop the video if needed to ensure the screen is filled.
+        """
+        # Get dimensions
+        screen_width = self.screen.get_width()
+        screen_height = self.screen.get_height()
+        surface_width = surface.get_width()
+        surface_height = surface.get_height()
+        
+        # Calculate aspect ratios
+        screen_ratio = screen_width / screen_height
+        surface_ratio = surface_width / surface_height
+        
+        # Calculate new dimensions that preserve aspect ratio
+        if screen_ratio > surface_ratio:
+            # Screen is wider than video, fit to width and crop height
+            new_width = screen_width
+            new_height = int(new_width / surface_ratio)
+        else:
+            # Screen is taller than video, fit to height and crop width
+            new_height = screen_height
+            new_width = int(new_height * surface_ratio)
+        
+        # Scale the surface
+        scaled_surface = pygame.transform.scale(surface, (new_width, new_height))
+        
+        # Create a new surface for the final result
+        result_surface = pygame.Surface((screen_width, screen_height))
+        
+        # Calculate position to center the content (may be negative if cropping)
+        x_offset = (screen_width - new_width) // 2
+        y_offset = (screen_height - new_height) // 2
+        
+        # Blit the scaled surface onto the result surface
+        result_surface.blit(scaled_surface, (x_offset, y_offset))
+        
+        return result_surface
+    
     def play_video(self, video_file):
         """Play a video file or handle placeholder text files"""
         try:
@@ -64,8 +104,7 @@ class VideoPlayer:
                     try:
                         frame = self.current_video.get_frame(current_time)
                         frame_surface = pygame.surfarray.make_surface(frame.swapaxes(0, 1))
-                        frame_surface = pygame.transform.scale(frame_surface, 
-                                                             (self.screen.get_width(), self.screen.get_height()))
+                        frame_surface = self._scale_preserve_ratio(frame_surface)
                         self.previous_frame = frame_surface
                     except Exception:
                         self.previous_frame = None
@@ -196,8 +235,7 @@ class VideoPlayer:
                     try:
                         frame = self.current_video.get_frame(0)
                         frame_surface = pygame.surfarray.make_surface(frame.swapaxes(0, 1))
-                        frame_surface = pygame.transform.scale(frame_surface, 
-                                                             (self.screen.get_width(), self.screen.get_height()))
+                        frame_surface = self._scale_preserve_ratio(frame_surface)
                         return frame_surface, False  # Not in transition, not complete
                     except Exception as e:
                         print(f"Error getting first frame of new video: {e}")
@@ -212,8 +250,7 @@ class VideoPlayer:
                     # Get frame from the next video
                     next_frame = self.next_video.get_frame(0)
                     next_surface = pygame.surfarray.make_surface(next_frame.swapaxes(0, 1))
-                    next_surface = pygame.transform.scale(next_surface, 
-                                                        (self.screen.get_width(), self.screen.get_height()))
+                    next_surface = self._scale_preserve_ratio(next_surface)
                     
                     # Create a new surface for the blended frame
                     blended_surface = pygame.Surface((self.screen.get_width(), self.screen.get_height()))
@@ -256,9 +293,8 @@ class VideoPlayer:
             # Convert the frame to a pygame surface
             frame_surface = pygame.surfarray.make_surface(frame.swapaxes(0, 1))
             
-            # Scale the frame to fit the screen
-            frame_surface = pygame.transform.scale(frame_surface, 
-                                                 (self.screen.get_width(), self.screen.get_height()))
+            # Scale the frame to fit the screen while preserving aspect ratio
+            frame_surface = self._scale_preserve_ratio(frame_surface)
             
             return frame_surface, False  # Not complete
         except Exception as e:

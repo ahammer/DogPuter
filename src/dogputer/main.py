@@ -30,9 +30,10 @@ except ImportError:
     print("Web interface dependencies not available. Web interface will be disabled.")
 
 class DogPuter:
-    def __init__(self, config=None):
+    def __init__(self, config=None, fullscreen=False):
         # Store the configuration
         self.config = config or {}
+        self.fullscreen = fullscreen
         
         # Initialize pygame
         pygame.init()
@@ -54,7 +55,10 @@ class DogPuter:
         # Set up display
         self.screen_width = SCREEN_WIDTH
         self.screen_height = SCREEN_HEIGHT
-        self.screen = pygame.display.set_mode((self.screen_width, self.screen_height))
+        
+        # Set fullscreen mode if requested
+        display_flags = pygame.FULLSCREEN if self.fullscreen else 0
+        self.screen = pygame.display.set_mode((self.screen_width, self.screen_height), display_flags)
 
         pygame.display.set_caption("DogPuter")
         

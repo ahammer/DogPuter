@@ -87,6 +87,9 @@ python -m dogputer
 # Run with specific configuration
 python -m dogputer --config x-arcade
 
+# Run in fullscreen mode
+python -m dogputer --fullscreen
+
 # List available configurations
 python -m dogputer --list-configs
 ```

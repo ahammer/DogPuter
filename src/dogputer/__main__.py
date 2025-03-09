@@ -16,6 +16,8 @@ def main():
                         help='Configuration to use (e.g., "development" or "x-arcade")')
     parser.add_argument('--list-configs', '-l', action='store_true',
                         help='List available configurations and exit')
+    parser.add_argument('--fullscreen', '-f', action='store_true',
+                        help='Run in fullscreen mode')
     args = parser.parse_args()
     
     # If list-configs is specified, list available configurations and exit
@@ -48,7 +50,7 @@ def main():
     config = load_config(config_name)
     
     # Initialize and run the application
-    app = DogPuter(config=config)
+    app = DogPuter(config=config, fullscreen=args.fullscreen)
     app.run()
 
 if __name__ == "__main__":

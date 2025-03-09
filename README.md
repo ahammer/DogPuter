@@ -93,16 +93,20 @@ python -m dogputer --list-configs
 
 ### Web Interface
 
-DogPuter now includes a web interface that runs alongside the main application, allowing you to:
+DogPuter includes a powerful web interface that runs alongside the main application, allowing you to:
 
-1. View and edit command mappings from any device on your network
+1. View and edit command mappings from any device on your network through a drag-and-drop interface
 2. Upload new videos in the command_name.mp4 format
 3. Manage all registered actions (commands with associated videos)
+4. Make configuration changes without restarting the application
 
 The web interface is automatically started when you run the application, and:
 - Shows the URL and QR code on the main DogPuter screen
 - Runs on port 5000 by default
 - Can be accessed from any device on the same network
+- Provides real-time feedback on changes and uploads
+
+The QR code toggles visibility every 10 seconds, allowing you to scan it with a mobile device for easy access.
 
 For more details, see the [Web Interface Documentation](docs/web_interface.md).
 

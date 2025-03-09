@@ -10,6 +10,7 @@ from dogputer.core.config import (
     BLUE_PRIMARY, YELLOW_PRIMARY, WHITE, LIGHT_BLUE, CREAM,
     SUCCESS_COLOR, ALERT_COLOR, ERROR_COLOR, PAW_CURSOR_SIZE
 )
+from dogputer.core.commands import ExitCommand
 from dogputer.ui.video_player import VideoPlayer
 from dogputer.core.tts_handler import TTSHandler
 from dogputer.core.app_state import AppState, Mode
@@ -30,7 +31,7 @@ class DogPuter:
         # Set up display
         self.screen_width = SCREEN_WIDTH
         self.screen_height = SCREEN_HEIGHT
-        self.screen = pygame.display.set_mode((self.screen_width, self.screen_height), pygame.FULLSCREEN)
+        self.screen = pygame.display.set_mode((self.screen_width, self.screen_height))
 
         pygame.display.set_caption("DogPuter")
         
@@ -194,64 +195,31 @@ class DogPuter:
             # Update input handler
             self.input_handler.update()
             
-            # Process the events from our input handler
+            # Get and process commands from our input handler
+            commands = self.input_handler.get_commands()
+            for command in commands:
+                # Create particles for visual feedback when a command is received
+                x = random.randint(self.screen_width//3, 2*self.screen_width//3)
+                y = random.randint(self.screen_height//3, 2*self.screen_height//3)
+                self.particle_system.create_burst(x, y, count=15, color=YELLOW_PRIMARY)
+                
+                # Process the command
+                print(f"Processing command: {command}")
+                # Handle exit command specially
+                if isinstance(command, ExitCommand):
+                    running = False
+                else:
+                    # Pass other commands to app state
+                    self.app_state.handle_command(command)
+            
+            # Also process raw events for backward compatibility
             events = self.input_handler.get_events()
             for event in events:
                 if event.type == pygame.QUIT:
                     running = False
-                elif event.type == pygame.KEYDOWN:
+                elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                     # Exit on ESC key
-                    if event.key == pygame.K_ESCAPE:
-                        running = False
-                    # Only process keys that are in our accepted list if we have one
-                    elif not accepted_keys or event.key in accepted_keys:
-                        # Create particles on key press for visual feedback
-                        x = random.randint(self.screen_width//3, 2*self.screen_width//3)
-                        y = random.randint(self.screen_height//3, 2*self.screen_height//3)
-                        self.particle_system.create_burst(x, y, count=15, color=YELLOW_PRIMARY)
-                        
-                        # Handle the keypress once when the key is pressed down
-                        key_name = pygame.key.name(event.key)
-                        print(f"Key pressed: {key_name} (code: {event.key})")
-                        
-                        # Process key - handle specially for X-Arcade keys
-                        if self.config.get('keymapping_name') == 'x-arcade-kb':
-                            # For x-arcade-kb, if key is a mapped X-Arcade button, check the command in the mapping
-                            from dogputer.core.config import INPUT_MAPPINGS as config_input_mappings
-                            if event.key in config_input_mappings:
-                                # Process mapped key
-                                command = config_input_mappings[event.key]
-                                print(f"Found mapping for key {key_name}: {command}")
-                                
-                                # Handle video commands differently
-                                if command.startswith("video_"):
-                                    # Extract channel from video_ prefix
-                                    video_name = command[6:] # Remove "video_" prefix
-                                    print(f"Selecting video: {video_name}")
-                            
-                            # Create a special mapping for z key to ball if in x-arcade-kb mode
-                            if event.key == pygame.K_z:
-                                print(f"Special mapping for X-Arcade p1_button1 (z key) -> ball")
-                            
-                            # Always process key for X-Arcade
-                            self.app_state.handle_key_press(event.key)
-                        elif event.key in self.input_config["input_mappings"]:
-                            # Process mapped key
-                            command = self.input_config["input_mappings"][event.key]
-                            print(f"Found mapping for key {key_name}: {command}")
-                            
-                            # Handle video commands differently
-                            if command.startswith("video_"):
-                                # Extract channel from video_ prefix
-                                video_name = command[6:] # Remove "video_" prefix
-                                print(f"Selecting video: {video_name}")
-                            
-                            self.app_state.handle_key_press(event.key)
-                        else:
-                            print(f"No mapping found for key {key_name}")
-                elif event.type == pygame.JOYBUTTONDOWN:
-                    # Handle joystick button press as input
-                    self.app_state.handle_key_press(pygame.K_SPACE)  # Treat as space key
+                    running = False
             
             # Update state
             self.app_state.update(delta_time)

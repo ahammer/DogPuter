@@ -400,180 +400,82 @@ class AppState:
                 print(f"Mode changed to TEXT")
     
     def handle_key_press(self, key):
-        """Handle a key press event"""
+        """
+        Legacy method for backward compatibility.
+        Will convert the key press to a command and handle it.
+        New code should use handle_command directly instead.
+        """
         try:
             key_name = pygame.key.name(key)
         except:
             key_name = f"Unknown key ({key})"
             
         print(f"AppState.handle_key_press: {key_name} (code: {key})")
-        print(f"Current mode: {self.mode}")
-        print(f"Current content type: {self.content_state.current_type}")
+        
+        # Check for input cooldown
+        if not self.input_state.is_input_allowed():
+            # Show feedback with the current cooldown time
+            cooldown_time = round(self.input_state.input_cooldown, 1)
+            self.show_feedback(f"Too fast! Wait {cooldown_time}s", (255, 255, 0))
+            print(f"Input rejected: too rapid (cooldown: {self.input_state.input_cooldown}s)")
+            return
+            
+        # Exit waiting screen on any key press
+        if self.mode == Mode.WAITING:
+            self.show_feedback("Input accepted!", (0, 0, 255))
+            self.input_state.record_input()
+            print(f"Exiting waiting mode, processing key: {key_name}")
+        
+        # Convert key to command using input mappings
+        command_name = None
+        
+        # Special handling for z key (code 122) with X-Arcade keyboard mapping
+        if key == pygame.K_z and pygame.key.name(key) == 'z':
+            command_name = "ball"
+        # Handle keys with mappings in INPUT_MAPPINGS
+        elif key in INPUT_MAPPINGS:
+            command_name = INPUT_MAPPINGS[key]
+        
+        # If we found a command name, create and execute the command
+        if command_name:
+            # Import here to avoid circular import
+            from dogputer.core.commands import ContentCommand, VideoChannelCommand
+            
+            # Create the appropriate command
+            if command_name.startswith("video_"):
+                # This is handled directly in the main.py file
+                print(f"Video command detected: {command_name}")
+                self.input_state.record_input()
+                return
+            else:
+                # Create a content command
+                command = ContentCommand(command_name)
+                self.handle_command(command)
+        else:
+            # No command found for this key
+            print(f"No mapping found for key: {key_name}")
+            
+    def handle_command(self, command):
+        """Handle a command object"""
+        print(f"Handling command: {command}")
         
         # Check for input cooldown
         if not self.input_state.is_input_allowed():
             # Show feedback with the current cooldown time
             cooldown_time = round(self.input_state.input_cooldown, 1)
             self.show_feedback(f"Too fast! Wait {cooldown_time}s", (255, 255, 0))  # Yellow for rejection
-            print(f"Input rejected: too rapid (cooldown: {self.input_state.input_cooldown}s)")
+            print(f"Command rejected: too rapid (cooldown: {self.input_state.input_cooldown}s)")
             return
         
-        # Exit waiting screen on any key press
+        # Exit waiting screen on any command
         if self.mode == Mode.WAITING:
-            # Just exit waiting screen, don't return - continue processing the key
             self.show_feedback("Input accepted!", (0, 0, 255))  # Blue for acceptance
             self.input_state.record_input()
-            print(f"Exiting waiting mode, processing key: {key_name}")
+            print(f"Exiting waiting mode, processing command: {command}")
         
-        # Special handling for z key (code 122) with X-Arcade keyboard mapping
-        if key == pygame.K_z and pygame.key.name(key) == 'z':
-            command = "ball"
-            print(f"Special handling for z key (code 122) -> {command}")
-            
-            # Record input
-            self.input_state.record_input()
-            
-            # Show feedback
-            print(f"Command found for z key: {command}")
-            self.show_feedback(f"{command.capitalize()} selected!", (0, 0, 255))  # Blue for acceptance
-            
-            # Play sound based on command
-            sound_file = f"{command}.wav"
-            try:
-                print(f"Playing sound: {sound_file}")
-                self.play_sound(sound_file)
-            except Exception as e:
-                print(f"Error playing sound: {e}")
-            
-            # Speak command using TTS
-            try:
-                print(f"Speaking command: {command}")
-                self.tts_handler.speak(command)
-            except Exception as e:
-                print(f"Error with TTS: {e}")
-            
-            # Try to play video first, fall back to image if video doesn't exist
-            # Construct video filename from command
-            video_filename = command + ".mp4"
-            video_path = os.path.join("videos", video_filename)
-            video_placeholder_path = video_path + ".txt"
-            
-            # If we're already playing this video, ignore the command
-            if (self.mode == Mode.VIDEO and 
-                self.content_state.video_content.is_playing and 
-                hasattr(self.content_state.video_content, 'current_video_filename') and
-                self.content_state.video_content.current_video_filename == video_filename):
-                print(f"Already playing video: {video_filename}, ignoring repeat command")
-                return
-            
-            # Check if video or placeholder exists
-            if os.path.exists(video_path):
-                # Play the actual video
-                print(f"Playing video for command: {command} (path: {video_path})")
-                result = self.content_state.set_video_by_filename(video_filename)
-                if result:
-                    print(f"Video playback started successfully, switching to VIDEO mode")
-                    self.mode = Mode.VIDEO
-                    # Store the current video filename for repeat detection
-                    self.content_state.video_content.current_video_filename = video_filename
-                else:
-                    # Fall back to image if video playback fails
-                    print(f"Video playback failed, falling back to image")
-                    image_name = f"{command}.jpg"
-                    self._display_image_fallback({"image": image_name, "display_time": DEFAULT_DISPLAY_TIME})
-            elif os.path.exists(video_placeholder_path):
-                # If we have a placeholder, display the image with a message
-                print(f"Video placeholder found for command: {command}, displaying image instead")
-                image_name = f"{command}.jpg"
-                self._display_image_fallback({"image": image_name, "display_time": DEFAULT_DISPLAY_TIME})
-                # Show feedback about placeholder
-                self.show_feedback("Video placeholder - using image instead", (0, 0, 255))
-            else:
-                # Fall back to image
-                image_name = f"{command}.jpg"
-                self._display_image_fallback({"image": image_name, "display_time": DEFAULT_DISPLAY_TIME})
-            
-            # Return early since we've handled this key
-            return
-        # Handle keys with mappings
-        elif key in INPUT_MAPPINGS:
-            command = INPUT_MAPPINGS[key]
-            print(f"Found mapping for key {key} in INPUT_MAPPINGS")
-            
-            # Record input
-            self.input_state.record_input()
-            
-            # Show feedback
-            print(f"Command found for key {key_name}: {command}")
-            self.show_feedback(f"{command.capitalize()} selected!", (0, 0, 255))  # Blue for acceptance
-            
-            # Play sound based on command
-            sound_file = f"{command}.wav"
-            try:
-                print(f"Playing sound: {sound_file}")
-                self.play_sound(sound_file)
-            except Exception as e:
-                print(f"Error playing sound: {e}")
-            
-            # Speak command using TTS
-            try:
-                print(f"Speaking command: {command}")
-                self.tts_handler.speak(command)
-            except Exception as e:
-                print(f"Error with TTS: {e}")
-            
-            # Special handling for video prefixed commands
-            if command.startswith("video_"):
-                # This is handled directly in the main.py file
-                # Just record that we processed this
-                print(f"Video command detected: {command}")
-                return
-                
-            # Try to play video first, fall back to image if video doesn't exist
-            # Construct video filename from command
-            video_filename = command + ".mp4"
-            video_path = os.path.join("videos", video_filename)
-            video_placeholder_path = video_path + ".txt"
-            
-            # If we're already playing this video, ignore the command
-            if (self.mode == Mode.VIDEO and 
-                self.content_state.video_content.is_playing and 
-                hasattr(self.content_state.video_content, 'current_video_filename') and
-                self.content_state.video_content.current_video_filename == video_filename):
-                print(f"Already playing video: {video_filename}, ignoring repeat command")
-                return
-            
-            # Check if video or placeholder exists
-            if os.path.exists(video_path):
-                # Play the actual video
-                print(f"Playing video for command: {command} (path: {video_path})")
-                result = self.content_state.set_video_by_filename(video_filename)
-                if result:
-                    print(f"Video playback started successfully, switching to VIDEO mode")
-                    self.mode = Mode.VIDEO
-                    # Store the current video filename for repeat detection
-                    self.content_state.video_content.current_video_filename = video_filename
-                else:
-                    # Fall back to image if video playback fails
-                    print(f"Video playback failed, falling back to image")
-                    image_name = f"{command}.jpg"
-                    self._display_image_fallback({"image": image_name, "display_time": DEFAULT_DISPLAY_TIME})
-            elif os.path.exists(video_placeholder_path):
-                # If we have a placeholder, display the image with a message
-                print(f"Video placeholder found for command: {command}, displaying image instead")
-                image_name = f"{command}.jpg"
-                self._display_image_fallback({"image": image_name, "display_time": DEFAULT_DISPLAY_TIME})
-                # Show feedback about placeholder
-                self.show_feedback("Video placeholder - using image instead", (0, 0, 255))
-            else:
-                # Fall back to image
-                image_name = f"{command}.jpg"
-                self._display_image_fallback({"image": image_name, "display_time": DEFAULT_DISPLAY_TIME})
-        
-        # No key mapping found - this is handled as part of input_mappings now
-        else:
-            # This can happen if a key is pressed that isn't mapped
-            print(f"No mapping found for key: {key_name}")
+        # Record input and execute command
+        self.input_state.record_input()
+        command.execute(self)
     
     def _display_image_fallback(self, mapping):
         """Display image as fallback when video is not available"""

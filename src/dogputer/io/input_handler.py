@@ -6,14 +6,37 @@ Provides a consistent interface for different input methods (keyboard, joystick)
 
 import pygame
 from abc import ABC, abstractmethod
+from dogputer.io.input_mapper import InputMapper
 
 class InputHandler(ABC):
     """Abstract base class for input handlers"""
+    
+    def __init__(self):
+        """Initialize the input handler"""
+        self.mapper = None
+    
+    def set_mapper(self, mapper):
+        """Set the input mapper for this handler"""
+        self.mapper = mapper
+        return self
     
     @abstractmethod
     def get_events(self):
         """Get all pending input events"""
         pass
+    
+    def get_commands(self):
+        """Get commands from input events using the mapper"""
+        if not self.mapper:
+            return []
+            
+        commands = []
+        for event in self.get_events():
+            command = self.mapper.map_event(event)
+            if command:
+                commands.append(command)
+                
+        return commands
     
     @abstractmethod
     def is_key_pressed(self, key):
@@ -25,6 +48,10 @@ class InputHandler(ABC):
         """Get the current value of an axis (joystick)"""
         pass
     
+    def get_axis_commands(self):
+        """Get commands from axis values"""
+        return []
+    
     @abstractmethod
     def update(self):
         """Update the input state"""
@@ -35,11 +62,15 @@ class KeyboardInputHandler(InputHandler):
     
     def __init__(self, input_mappings=None):
         """Initialize the keyboard input handler"""
+        super().__init__()
         self.input_mappings = input_mappings or {}
         # For backward compatibility
         self.key_mappings = self.input_mappings
         # Initialize with empty events list
         self.events = []
+        # Create input mapper
+        self.mapper = InputMapper(self.input_mappings)
+        
         print(f"KeyboardInputHandler initialized with {len(self.input_mappings)} input mappings")
         # Log all key mappings for debugging
         for key, command in self.input_mappings.items():
@@ -121,9 +152,13 @@ class JoystickInputHandler(InputHandler):
     
     def __init__(self, joystick_id=0, input_mappings=None):
         """Initialize the joystick input handler"""
+        super().__init__()
         self.input_mappings = input_mappings or {}
         self.joystick_id = joystick_id
         self.events = []
+        
+        # Create input mapper
+        self.mapper = InputMapper(self.input_mappings)
         
         # Initialize joystick if available
         if pygame.joystick.get_count() > joystick_id:
@@ -173,6 +208,20 @@ class JoystickInputHandler(InputHandler):
                                 print(f"Joystick hat down maps to {self.input_mappings[hat_key]}")
                                 
         return self.events
+    
+    def get_axis_commands(self):
+        """Get commands from joystick axis values"""
+        if not self.active or not self.joystick or not self.mapper:
+            return []
+            
+        commands = []
+        for axis in range(self.joystick.get_numaxes()):
+            value = self.joystick.get_axis(axis)
+            command = self.mapper.map_axis_to_command(self.joystick_id, axis, value)
+            if command:
+                commands.append(command)
+                
+        return commands
     
     def is_key_pressed(self, key):
         """Check if a joystick button/direction is pressed"""
@@ -387,12 +436,32 @@ class XArcadeInputHandler(KeyboardInputHandler):
             return (1.0 if down else 0.0) + (-1.0 if up else 0.0)
             
         return 0.0
+    
+    def get_commands_from_logical_buttons(self):
+        """Get commands from X-Arcade logical button names"""
+        if not self.mapper:
+            return []
+            
+        commands = []
+        keys = pygame.key.get_pressed()
+        
+        # Check each logical button
+        for logical_name in self.key_mappings:
+            mapped_key = self.key_mappings[logical_name]
+            if keys[mapped_key]:
+                # If pressed, try to map to command
+                command = self.mapper.map_logical_name(logical_name)
+                if command:
+                    commands.append(command)
+                    
+        return commands
 
 class CompositeInputHandler(InputHandler):
     """Composite input handler that manages multiple input handlers"""
     
     def __init__(self):
         """Initialize the composite input handler with empty handlers list"""
+        super().__init__()
         self.handlers = []
         self.events = []
     
@@ -410,6 +479,24 @@ class CompositeInputHandler(InputHandler):
             self.events.extend(handler.get_events())
             
         return self.events
+    
+    def get_commands(self):
+        """Get commands from all handlers"""
+        commands = []
+        
+        for handler in self.handlers:
+            # Get commands from events
+            commands.extend(handler.get_commands())
+            
+            # Get commands from axis values for joysticks
+            if hasattr(handler, 'get_axis_commands'):
+                commands.extend(handler.get_axis_commands())
+                
+            # Get commands from logical buttons for X-Arcade
+            if hasattr(handler, 'get_commands_from_logical_buttons'):
+                commands.extend(handler.get_commands_from_logical_buttons())
+                
+        return commands
     
     def is_key_pressed(self, key):
         """Check if a key is pressed on any handler"""
@@ -438,9 +525,11 @@ class MockInputHandler(InputHandler):
     
     def __init__(self):
         """Initialize the mock input handler"""
+        super().__init__()
         self.pressed_keys = set()
         self.events = []
         self.axis_values = {}
+        self.mapper = InputMapper({})
     
     def simulate_key_press(self, key):
         """Simulate a key press"""

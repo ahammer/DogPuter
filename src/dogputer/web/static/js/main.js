@@ -2,7 +2,7 @@
  * DogPuter Web Interface JavaScript
  * 
  * This script handles all client-side functionality for the DogPuter web interface,
- * including command mapping management and video uploads.
+ * including command mapping management and video/sound uploads.
  */
 
 // Toast notification system
@@ -49,6 +49,82 @@ const Toast = {
                 this.container.removeChild(toast);
             }
         }, duration);
+    }
+};
+
+// Preview modal system
+const PreviewModal = {
+    modal: null,
+    
+    init() {
+        if (!this.modal) {
+            const template = document.getElementById('preview-modal-template');
+            this.modal = template.content.cloneNode(true).querySelector('.preview-modal');
+            document.body.appendChild(this.modal);
+            
+            // Add close button event
+            const closeBtn = this.modal.querySelector('.preview-close');
+            closeBtn.addEventListener('click', () => this.close());
+            
+            // Close on backdrop click
+            this.modal.addEventListener('click', (e) => {
+                if (e.target === this.modal) {
+                    this.close();
+                }
+            });
+            
+            // Close on ESC key
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && this.modal.classList.contains('active')) {
+                    this.close();
+                }
+            });
+        }
+    },
+    
+    showVideo(title, videoSrc) {
+        this.init();
+        const modalTitle = this.modal.querySelector('.preview-title');
+        const modalBody = this.modal.querySelector('.preview-modal-body');
+        
+        modalTitle.textContent = title;
+        modalBody.innerHTML = `
+            <video controls autoplay>
+                <source src="${videoSrc}" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+        `;
+        
+        this.modal.classList.add('active');
+    },
+    
+    showSound(title, soundSrc) {
+        this.init();
+        const modalTitle = this.modal.querySelector('.preview-title');
+        const modalBody = this.modal.querySelector('.preview-modal-body');
+        
+        modalTitle.textContent = title;
+        modalBody.innerHTML = `
+            <audio controls autoplay>
+                <source src="${soundSrc}" type="audio/wav">
+                Your browser does not support the audio tag.
+            </audio>
+        `;
+        
+        this.modal.classList.add('active');
+    },
+    
+    close() {
+        if (this.modal) {
+            this.modal.classList.remove('active');
+            
+            // Pause any playing media
+            const video = this.modal.querySelector('video');
+            if (video) video.pause();
+            
+            const audio = this.modal.querySelector('audio');
+            if (audio) audio.pause();
+        }
     }
 };
 
@@ -128,10 +204,21 @@ const Api = {
         }
     },
     
-    async uploadVideo(file, onProgress) {
+    async uploadFiles(files, commandName = '', onProgress) {
         try {
             const formData = new FormData();
-            formData.append('video', file);
+            
+            // Add each file to form data
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const fileType = file.type.includes('video') ? 'video' : 'sound';
+                formData.append(fileType + i, file);
+            }
+            
+            // Add command name if provided
+            if (commandName) {
+                formData.append('command', commandName);
+            }
             
             return new Promise((resolve, reject) => {
                 const xhr = new XMLHttpRequest();
@@ -169,7 +256,7 @@ const Api = {
                 xhr.send(formData);
             });
         } catch (error) {
-            console.error('Error uploading video:', error);
+            console.error('Error uploading files:', error);
             throw error;
         }
     }
@@ -202,6 +289,29 @@ const UI = {
                 link.parentElement.classList.add('active');
             });
         });
+        
+        // Upload sub-tabs
+        const uploadTabs = document.querySelectorAll('.upload-tab');
+        
+        uploadTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                // Get target content ID
+                const targetId = tab.getAttribute('data-target');
+                
+                // Hide all content and remove active class from tabs
+                document.querySelectorAll('.upload-tab-content').forEach(content => {
+                    content.classList.remove('active');
+                });
+                
+                document.querySelectorAll('.upload-tab').forEach(uploadTab => {
+                    uploadTab.classList.remove('active');
+                });
+                
+                // Show target content and set active class on tab
+                document.getElementById(targetId).classList.add('active');
+                tab.classList.add('active');
+            });
+        });
     },
     
     // Actions list
@@ -229,6 +339,37 @@ const UI = {
             
             const nameElement = card.querySelector('.action-name');
             nameElement.textContent = action.name;
+            
+            // Add preview buttons
+            const previewContainer = card.querySelector('.action-preview');
+            if (previewContainer) {
+                const videoButton = previewContainer.querySelector('.preview-video');
+                const soundButton = previewContainer.querySelector('.preview-sound');
+                
+                // Video preview button
+                videoButton.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    PreviewModal.showVideo(
+                        `${action.name} Video`,
+                        `/api/media/video/${action.filename}`
+                    );
+                });
+                
+                // Sound preview button - only show if available
+                if (action.has_sound) {
+                    soundButton.classList.add('available');
+                    soundButton.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        PreviewModal.showSound(
+                            `${action.name} Sound`,
+                            `/api/media/sound/${action.sound_filename}`
+                        );
+                    });
+                } else {
+                    soundButton.setAttribute('disabled', 'disabled');
+                    soundButton.setAttribute('title', 'No sound available');
+                }
+            }
             
             const mappingsElement = card.querySelector('.action-mappings');
             if (action.mappings && action.mappings.length > 0) {
@@ -399,63 +540,123 @@ const UI = {
     
     // Upload area
     initUploadArea() {
-        const uploadArea = document.getElementById('upload-area');
-        const fileInput = document.getElementById('file-input');
+        const commandNameInput = document.getElementById('command-name');
+        const videoUploadArea = document.getElementById('video-upload-area');
+        const soundUploadArea = document.getElementById('sound-upload-area');
+        const videoFileInput = document.getElementById('video-file-input');
+        const soundFileInput = document.getElementById('sound-file-input');
         const uploadList = document.getElementById('upload-list');
         
-        // Click to select files
-        uploadArea.addEventListener('click', () => {
-            fileInput.click();
-        });
-        
-        // Handle file selection
-        fileInput.addEventListener('change', () => {
-            if (fileInput.files.length > 0) {
-                handleFiles(fileInput.files);
-            }
-        });
-        
-        // Drag and drop
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.classList.add('drag-over');
-        });
-        
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.classList.remove('drag-over');
-        });
-        
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.classList.remove('drag-over');
+        // Video upload area
+        if (videoUploadArea) {
+            // Click to select files
+            videoUploadArea.addEventListener('click', () => {
+                videoFileInput.click();
+            });
             
-            if (e.dataTransfer.files.length > 0) {
-                handleFiles(e.dataTransfer.files);
-            }
-        });
+            // Handle file selection
+            videoFileInput.addEventListener('change', () => {
+                if (videoFileInput.files.length > 0) {
+                    handleUpload(videoFileInput.files, 'video');
+                }
+            });
+            
+            // Drag and drop
+            videoUploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                videoUploadArea.classList.add('drag-over');
+            });
+            
+            videoUploadArea.addEventListener('dragleave', () => {
+                videoUploadArea.classList.remove('drag-over');
+            });
+            
+            videoUploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                videoUploadArea.classList.remove('drag-over');
+                
+                const files = Array.from(e.dataTransfer.files).filter(file => 
+                    file.type === 'video/mp4' || file.name.endsWith('.mp4')
+                );
+                
+                if (files.length > 0) {
+                    handleUpload(files, 'video');
+                } else {
+                    Toast.show('Please drop MP4 video files only for video upload', 'error');
+                }
+            });
+        }
+        
+        // Sound upload area
+        if (soundUploadArea) {
+            // Click to select files
+            soundUploadArea.addEventListener('click', () => {
+                soundFileInput.click();
+            });
+            
+            // Handle file selection
+            soundFileInput.addEventListener('change', () => {
+                if (soundFileInput.files.length > 0) {
+                    handleUpload(soundFileInput.files, 'sound');
+                }
+            });
+            
+            // Drag and drop
+            soundUploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                soundUploadArea.classList.add('drag-over');
+            });
+            
+            soundUploadArea.addEventListener('dragleave', () => {
+                soundUploadArea.classList.remove('drag-over');
+            });
+            
+            soundUploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                soundUploadArea.classList.remove('drag-over');
+                
+                const files = Array.from(e.dataTransfer.files).filter(file => 
+                    file.type === 'audio/wav' || file.name.endsWith('.wav')
+                );
+                
+                if (files.length > 0) {
+                    handleUpload(files, 'sound');
+                } else {
+                    Toast.show('Please drop WAV sound files only for sound upload', 'error');
+                }
+            });
+        }
         
         // Handle files function
-        function handleFiles(files) {
-            const validFiles = Array.from(files).filter(file => 
-                file.type === 'video/mp4' || file.name.endsWith('.mp4')
-            );
+        async function handleUpload(files, type) {
+            const validFiles = Array.from(files).filter(file => {
+                if (type === 'video') {
+                    return file.type === 'video/mp4' || file.name.endsWith('.mp4');
+                } else if (type === 'sound') {
+                    return file.type === 'audio/wav' || file.name.endsWith('.wav');
+                }
+                return false;
+            });
             
             if (validFiles.length === 0) {
-                Toast.show('Please select MP4 video files only', 'error');
+                Toast.show(`Please select ${type === 'video' ? 'MP4 video' : 'WAV sound'} files only`, 'error');
                 return;
             }
             
-            // Process each file
-            validFiles.forEach(async (file) => {
-                // Check if filename is in command_name.mp4 format
-                const filename = file.name;
-                
+            // Get command name if provided
+            const commandName = commandNameInput.value.trim();
+            
+            // Create upload items
+            const uploadItems = [];
+            
+            validFiles.forEach((file) => {
                 // Create upload item in list
                 const template = document.getElementById('upload-item-template');
                 const item = template.content.cloneNode(true).querySelector('.upload-item');
                 
                 const nameElement = item.querySelector('.upload-item-name');
-                nameElement.textContent = filename;
+                const displayName = commandName || file.name;
+                nameElement.textContent = displayName;
                 
                 const statusElement = item.querySelector('.upload-item-status');
                 statusElement.textContent = 'Uploading...';
@@ -463,34 +664,58 @@ const UI = {
                 const progressBar = item.querySelector('.progress-bar');
                 
                 uploadList.appendChild(item);
-                
-                try {
-                    // Upload the file
-                    const result = await Api.uploadVideo(file, (progress) => {
+                uploadItems.push({ item, file, progressBar, statusElement });
+            });
+            
+            try {
+                // Upload all files together
+                const onProgress = (progress) => {
+                    uploadItems.forEach(({ progressBar }) => {
                         progressBar.style.width = `${progress}%`;
                     });
-                    
-                    // Update status on success
-                    statusElement.textContent = 'Uploaded';
-                    statusElement.classList.add('success');
-                    progressBar.style.width = '100%';
+                };
+                
+                const result = await Api.uploadFiles(validFiles, commandName, onProgress);
+                
+                // Update status for each file
+                if (result.results) {
+                    result.results.forEach((fileResult, index) => {
+                        const { statusElement, progressBar } = uploadItems[index];
+                        
+                        if (fileResult.success) {
+                            statusElement.textContent = 'Uploaded';
+                            statusElement.classList.add('success');
+                            progressBar.style.width = '100%';
+                        } else {
+                            statusElement.textContent = fileResult.error || 'Failed';
+                            statusElement.classList.add('error');
+                        }
+                    });
+                }
+                
+                // Show overall status
+                if (result.success) {
+                    Toast.show('Files uploaded successfully', 'success');
                     
                     // Refresh actions list
                     await App.loadActions();
                     UI.renderActions();
-                    
-                    Toast.show(`File ${filename} uploaded successfully`, 'success');
-                } catch (error) {
-                    // Update status on error
+                } else {
+                    Toast.show(result.error || 'Upload failed', 'error');
+                }
+            } catch (error) {
+                // Update status on error
+                uploadItems.forEach(({ statusElement }) => {
                     statusElement.textContent = error.message || 'Failed';
                     statusElement.classList.add('error');
-                    
-                    Toast.show(`Failed to upload ${filename}: ${error.message}`, 'error');
-                }
-            });
+                });
+                
+                Toast.show(`Failed to upload files: ${error.message}`, 'error');
+            }
             
-            // Clear file input
-            fileInput.value = '';
+            // Clear file inputs
+            videoFileInput.value = '';
+            soundFileInput.value = '';
         }
     },
     

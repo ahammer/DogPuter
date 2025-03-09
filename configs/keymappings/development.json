@@ -17,6 +17,7 @@
   "K_LEFT": "video_cats",
   "K_RIGHT": "video_birds",
   "K_UP": "video_squirrels",
+  "K_a": "birds",
   "K_e": "ball",
   "K_q": "play",
   "K_r": "hugs",
@@ -24,5 +25,5 @@
   "K_u": "ball",
   "K_w": "rope",
   "K_y": "water",
-  "K_a": "birds"
+  "K_s": "beach"
 }

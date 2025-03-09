@@ -55,15 +55,41 @@
 
         <div id="upload-tab" class="tab-content">
             <div class="upload-container">
-                <h2>Upload Command Videos</h2>
-                <p>Upload MP4 videos with filenames in the format <strong>command_name.mp4</strong>.</p>
-                <p>The filename becomes the command name for mapping to inputs.</p>
-
-                <div class="upload-area" id="upload-area">
-                    <div class="upload-inner">
-                        <i class="fas fa-cloud-upload-alt"></i>
-                        <p>Drag & drop video files here or click to select files</p>
-                        <input type="file" id="file-input" accept=".mp4" multiple hidden>
+                <h2>Upload Command Files</h2>
+                
+                <div class="upload-options">
+                    <div class="form-group">
+                        <label for="command-name">Command Name (optional):</label>
+                        <input type="text" id="command-name" placeholder="Default: file name without extension">
+                        <p class="help-text">This will be used instead of the file name for all uploaded files.</p>
+                    </div>
+                </div>
+                
+                <div class="upload-tabs">
+                    <div class="upload-tab active" data-target="video-upload">Video Upload (.mp4)</div>
+                    <div class="upload-tab" data-target="sound-upload">Sound Upload (.wav)</div>
+                </div>
+                
+                <div id="video-upload" class="upload-tab-content active">
+                    <p>Upload MP4 videos to create commands. Videos will be encoded for optimal performance.</p>
+                    <div class="upload-area" id="video-upload-area">
+                        <div class="upload-inner">
+                            <i class="fas fa-film"></i>
+                            <p>Drag & drop video files here or click to select files</p>
+                            <input type="file" id="video-file-input" accept=".mp4" multiple hidden>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="sound-upload" class="upload-tab-content">
+                    <p>Upload WAV sound files to accompany video commands (optional).</p>
+                    <p>To associate a sound with a video, use the same command name for both.</p>
+                    <div class="upload-area" id="sound-upload-area">
+                        <div class="upload-inner">
+                            <i class="fas fa-volume-up"></i>
+                            <p>Drag & drop sound files here or click to select files</p>
+                            <input type="file" id="sound-file-input" accept=".wav" multiple hidden>
+                        </div>
                     </div>
                 </div>
 
@@ -103,6 +129,31 @@
             <div class="upload-item-status"></div>
             <div class="upload-item-progress">
                 <div class="progress-bar"></div>
+            </div>
+        </div>
+    </template>
+
+    <template id="action-card-template">
+        <div class="action-card" draggable="true" data-command="">
+            <div class="action-name"></div>
+            <div class="action-preview">
+                <button class="preview-video" title="Preview Video"><i class="fas fa-play-circle"></i></button>
+                <button class="preview-sound" title="Preview Sound"><i class="fas fa-volume-up"></i></button>
+            </div>
+            <div class="action-mappings"></div>
+        </div>
+    </template>
+
+    <template id="preview-modal-template">
+        <div class="preview-modal">
+            <div class="preview-modal-content">
+                <div class="preview-modal-header">
+                    <h3 class="preview-title"></h3>
+                    <button class="preview-close">&times;</button>
+                </div>
+                <div class="preview-modal-body">
+                    <!-- Content will be added dynamically -->
+                </div>
             </div>
         </div>
     </template>

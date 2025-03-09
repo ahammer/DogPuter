@@ -221,6 +221,39 @@ main {
     border-radius: 3px;
 }
 
+/* Action preview styles */
+.action-preview {
+    display: flex;
+    gap: 5px;
+    margin: 5px 0;
+}
+
+.action-preview button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--primary-color);
+    transition: color 0.2s;
+    padding: 2px;
+}
+
+.action-preview button:hover {
+    color: var(--secondary-color);
+}
+
+.action-preview button:disabled {
+    color: #ccc;
+    cursor: not-allowed;
+}
+
+.action-preview .preview-sound {
+    display: none;
+}
+
+.action-preview .preview-sound.available {
+    display: inline-block;
+}
+
 /* Keyboard styles */
 .keyboard {
     display: grid;
@@ -309,6 +342,75 @@ main {
     margin-bottom: 15px;
 }
 
+/* Upload options styles */
+.upload-options {
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #f9f9f9;
+    border-radius: 5px;
+    border: 1px solid var(--border-color);
+}
+
+.form-group {
+    margin-bottom: 10px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+}
+
+.help-text {
+    font-size: 0.85em;
+    color: #666;
+    margin-top: 5px;
+}
+
+/* Upload tabs styles */
+.upload-tabs {
+    display: flex;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.upload-tab {
+    padding: 10px 20px;
+    cursor: pointer;
+    background-color: #f5f5f5;
+    border: 1px solid var(--border-color);
+    border-bottom: none;
+    border-radius: 5px 5px 0 0;
+    margin-right: 5px;
+    transition: background-color 0.2s;
+}
+
+.upload-tab:hover {
+    background-color: #e8f0f8;
+}
+
+.upload-tab.active {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.upload-tab-content {
+    display: none;
+    margin-bottom: 20px;
+}
+
+.upload-tab-content.active {
+    display: block;
+}
+
 .upload-area {
     border: 2px dashed var(--border-color);
     border-radius: 5px;
@@ -383,6 +485,77 @@ main {
     transition: width 0.3s;
 }
 
+/* Preview modal styles */
+.preview-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.preview-modal.active {
+    display: flex;
+}
+
+.preview-modal-content {
+    background-color: white;
+    width: 80%;
+    max-width: 800px;
+    border-radius: 5px;
+    overflow: hidden;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.preview-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.preview-title {
+    margin: 0;
+    font-size: 1.2em;
+}
+
+.preview-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.preview-close:hover {
+    transform: scale(1.1);
+}
+
+.preview-modal-body {
+    padding: 20px;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.preview-modal-body video {
+    width: 100%;
+    border-radius: 5px;
+    margin-bottom: 10px;
+}
+
+.preview-modal-body audio {
+    width: 100%;
+    margin-bottom: 10px;
+}
+
 /* Mapping info styles */
 .mapping-info {
     background-color: #f0f7fc;
@@ -425,6 +598,21 @@ footer {
         margin-bottom: 10px;
         margin-right: 0;
         max-width: none;
+    }
+    
+    .upload-tabs {
+        flex-direction: column;
+        border-bottom: none;
+    }
+    
+    .upload-tab {
+        border: 1px solid var(--border-color);
+        border-radius: 5px;
+        margin-bottom: 5px;
+    }
+    
+    .preview-modal-content {
+        width: 95%;
     }
 }
 

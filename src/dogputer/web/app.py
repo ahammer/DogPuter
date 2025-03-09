@@ -9,8 +9,11 @@ and video uploads.
 import os
 import json
 import socket
+import sys
 import threading
 import time
+import shutil
+import subprocess
 from flask import Flask, render_template, request, jsonify, send_from_directory
 import logging
 
@@ -30,6 +33,8 @@ last_config_update = 0
 CONFIG_DIR = os.path.join(os.getcwd(), "configs")
 KEYMAP_DIR = os.path.join(CONFIG_DIR, "keymappings")
 VIDEO_DIR = os.path.join(os.getcwd(), "media", "videos")
+VIDEO_RAW_DIR = os.path.join(os.getcwd(), "media", "videos_raw")
+SOUND_DIR = os.path.join(os.getcwd(), "media", "sounds")
 DEFAULT_CONFIG = "development.json"
 
 
@@ -85,9 +90,17 @@ def get_all_actions():
             if cmd == action or cmd == f"video_{action_name}":
                 mapped_keys.append(key)
         
+        # Check if there's a sound file for this action
+        has_sound = False
+        sound_path = os.path.join(SOUND_DIR, f"{action}.wav")
+        if os.path.exists(sound_path):
+            has_sound = True
+        
         result.append({
             "name": action_name,
             "filename": f"{action}.mp4",
+            "has_sound": has_sound,
+            "sound_filename": f"{action}.wav" if has_sound else None,
             "mapped": len(mapped_keys) > 0,
             "mappings": mapped_keys
         })
@@ -218,39 +231,160 @@ def api_update_mappings():
         return jsonify({"error": "Failed to save mappings"}), 500
 
 
+def encode_video(source_path, target_path):
+    """
+    Encode a video using the encode_videos_for_rpi script
+    
+    Args:
+        source_path (str): Path to the source video file
+        target_path (str): Path to the target directory
+        
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    try:
+        encoder_script = os.path.join(os.getcwd(), "encode_videos_for_rpi.py")
+        
+        # Create the raw video directory if it doesn't exist
+        os.makedirs(os.path.dirname(source_path), exist_ok=True)
+        
+        # Run the encoder script
+        subprocess.run([
+            sys.executable, 
+            encoder_script
+        ], check=True)
+        
+        return True
+    except Exception as e:
+        logger.error(f"Error encoding video: {e}")
+        return False
+
 @app.route('/api/upload', methods=['POST'])
 def api_upload_video():
-    """API endpoint to upload a new video file"""
-    if 'video' not in request.files:
-        return jsonify({"error": "No file part"}), 400
+    """API endpoint to upload a new video or sound file"""
+    files = request.files.to_dict()
+    custom_command = request.form.get('command', '').strip()
     
-    file = request.files['video']
-    if file.filename == '':
-        return jsonify({"error": "No selected file"}), 400
+    if not files:
+        return jsonify({"error": "No files uploaded"}), 400
     
-    if not file.filename.endswith('.mp4'):
-        return jsonify({"error": "File must be an MP4 video"}), 400
+    results = []
     
-    # Ensure the file follows the command_name.mp4 format
-    filename = file.filename
-    command_name = os.path.splitext(filename)[0]
-    
-    # Save the file
-    try:
-        if not os.path.exists(VIDEO_DIR):
-            os.makedirs(VIDEO_DIR, exist_ok=True)
+    for file_key, file in files.items():
+        if file.filename == '':
+            continue
+            
+        file_ext = os.path.splitext(file.filename)[1].lower()
         
-        filepath = os.path.join(VIDEO_DIR, filename)
-        file.save(filepath)
-        
-        return jsonify({
-            "success": True,
-            "command": command_name,
-            "file": filename
-        })
-    except Exception as e:
-        logger.error(f"Error saving file {filename}: {e}")
-        return jsonify({"error": f"Error saving file: {str(e)}"}), 500
+        # Check file type
+        if file_ext == '.mp4':
+            # For video files
+            if custom_command:
+                # Use custom command name if provided
+                command_name = custom_command
+                filename = f"{command_name}.mp4"
+            else:
+                # Use filename without extension as command name
+                filename = file.filename
+                command_name = os.path.splitext(filename)[0]
+            
+            # Save to raw videos directory first
+            try:
+                if not os.path.exists(VIDEO_RAW_DIR):
+                    os.makedirs(VIDEO_RAW_DIR, exist_ok=True)
+                
+                raw_filepath = os.path.join(VIDEO_RAW_DIR, filename)
+                file.save(raw_filepath)
+                
+                # Make sure videos directory exists
+                if not os.path.exists(VIDEO_DIR):
+                    os.makedirs(VIDEO_DIR, exist_ok=True)
+                
+                # Encode the video
+                target_filepath = os.path.join(VIDEO_DIR, filename)
+                
+                # Run the encoding in a background thread so we don't block the response
+                def encode_thread():
+                    try:
+                        # First copy the raw file to videos dir so it's immediately available
+                        shutil.copy2(raw_filepath, target_filepath)
+                        
+                        # Then run the encoder which will overwrite it with the encoded version
+                        encode_video(raw_filepath, VIDEO_DIR)
+                    except Exception as e:
+                        logger.error(f"Error in encode thread: {e}")
+                
+                threading.Thread(target=encode_thread).start()
+                
+                results.append({
+                    "success": True,
+                    "type": "video",
+                    "command": command_name,
+                    "file": filename
+                })
+            except Exception as e:
+                logger.error(f"Error saving video file {filename}: {e}")
+                results.append({
+                    "success": False,
+                    "type": "video",
+                    "error": f"Error saving file: {str(e)}"
+                })
+                
+        elif file_ext == '.wav':
+            # For sound files
+            if custom_command:
+                # Use custom command name if provided
+                command_name = custom_command
+                filename = f"{command_name}.wav"
+            else:
+                # Use filename without extension as command name
+                filename = file.filename
+                command_name = os.path.splitext(filename)[0]
+            
+            # Save the sound file
+            try:
+                if not os.path.exists(SOUND_DIR):
+                    os.makedirs(SOUND_DIR, exist_ok=True)
+                
+                filepath = os.path.join(SOUND_DIR, filename)
+                file.save(filepath)
+                
+                results.append({
+                    "success": True,
+                    "type": "sound",
+                    "command": command_name,
+                    "file": filename
+                })
+            except Exception as e:
+                logger.error(f"Error saving sound file {filename}: {e}")
+                results.append({
+                    "success": False,
+                    "type": "sound",
+                    "error": f"Error saving file: {str(e)}"
+                })
+        else:
+            results.append({
+                "success": False,
+                "error": f"Unsupported file type: {file_ext}. Only .mp4 and .wav files are supported."
+            })
+    
+    if not results:
+        return jsonify({"error": "No valid files were uploaded"}), 400
+    
+    return jsonify({
+        "success": any(r["success"] for r in results),
+        "results": results
+    })
+
+@app.route('/api/media/<media_type>/<path:filename>')
+def serve_media(media_type, filename):
+    """Serve media files (videos and sounds)"""
+    if media_type == 'video':
+        return send_from_directory(VIDEO_DIR, filename)
+    elif media_type == 'sound':
+        return send_from_directory(SOUND_DIR, filename)
+    else:
+        return jsonify({"error": "Invalid media type"}), 400
 
 
 def run_web_server(host='0.0.0.0', port=5000):

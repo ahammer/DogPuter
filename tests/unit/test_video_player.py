@@ -17,8 +17,6 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..",
 # Import the VideoPlayer from the package structure
 from dogputer.ui.video_player import VideoPlayer
 
-
-@pytest.mark.skip("These tests need a more complex setup with moviepy mocking")
 class TestVideoPlayer:
     """Test cases for the VideoPlayer class"""
     
@@ -111,3 +109,157 @@ class TestVideoPlayer:
                     assert result is True
                     assert player.current_video is None
                     assert player.video_surface == mock_surface
+    
+    @patch('dogputer.ui.video_player.VideoFileClip')
+    def test_play_video_success(self, mock_video_clip_class, mock_pygame_surface, mock_video_file_clip):
+        """Test successfully playing a video file"""
+        # Setup
+        player = VideoPlayer(mock_pygame_surface)
+        mock_video_clip_class.return_value = mock_video_file_clip
+        
+        # Set up mock for os.path.exists to return True for the video file
+        with patch('os.path.exists', side_effect=lambda path: not path.endswith(".txt")):
+            # Execute
+            result = player.play_video("testvideo.mp4")
+            
+            # Verify
+            assert result is True
+            assert player.current_video == mock_video_file_clip
+            assert player.paused is False
+            mock_video_clip_class.assert_called_once_with(os.path.join(player.videos_dir, "testvideo.mp4"))
+    
+    @patch('dogputer.ui.video_player.VideoFileClip')
+    def test_transition_between_videos(self, mock_video_clip_class, mock_pygame_surface, mock_video_file_clip):
+        """Test transitioning between videos"""
+        # Setup
+        player = VideoPlayer(mock_pygame_surface)
+        mock_video_clip_class.return_value = mock_video_file_clip
+        
+        # Mock time to control the transition timing
+        with patch('time.time', return_value=100.0):
+            # Mock os.path.exists to simulate video file existing
+            with patch('os.path.exists', side_effect=lambda path: not path.endswith(".txt")):
+                # First play a video
+                player.play_video("video1.mp4")
+                assert player.current_video == mock_video_file_clip
+                
+                # Now play another video which should start a transition
+                player.play_video("video2.mp4")
+                
+                # Verify transition is set up correctly
+                assert player.in_transition is True
+                assert player.next_video == mock_video_file_clip
+    
+    @patch('dogputer.ui.video_player.VideoFileClip')
+    def test_stop_video(self, mock_video_clip_class, mock_pygame_surface, mock_video_file_clip):
+        """Test stopping video playback"""
+        # Setup
+        player = VideoPlayer(mock_pygame_surface)
+        mock_video_clip_class.return_value = mock_video_file_clip
+        
+        # Play a video first
+        with patch('os.path.exists', side_effect=lambda path: not path.endswith(".txt")):
+            player.play_video("testvideo.mp4")
+            
+        # Execute
+        player.stop()
+        
+        # Verify
+        assert player.current_video is None
+        assert player.video_surface is None
+        assert player.paused is False
+        mock_video_file_clip.close.assert_called_once()
+    
+    @patch('dogputer.ui.video_player.VideoFileClip')
+    def test_pause_resume_toggle(self, mock_video_clip_class, mock_pygame_surface, mock_video_file_clip):
+        """Test pausing, resuming, and toggling video playback"""
+        # Setup
+        player = VideoPlayer(mock_pygame_surface)
+        mock_video_clip_class.return_value = mock_video_file_clip
+        
+        # Play a video first - need to patch time.time for start_time
+        with patch('os.path.exists', side_effect=lambda path: not path.endswith(".txt")):
+            with patch('time.time', return_value=100.0):
+                player.play_video("testvideo.mp4")
+                
+                # Test pause - in the same time.time context
+                player.pause()
+                assert player.paused is True
+                assert player.pause_time == 0.0  # Should be exactly 0.0 since start_time and time.time() are both 100.0
+            
+        # Test resume with a later time
+        with patch('time.time', return_value=105.0):
+            player.resume()
+            assert player.paused is False
+            assert player.start_time == 105.0  # Current time (105) - pause_time (0)
+            
+            # Test toggle pause (pause again)
+            player.toggle_pause()
+            assert player.paused is True
+            
+            # Test toggle pause (resume again)
+            player.toggle_pause()
+            assert player.paused is False
+    
+    @patch('dogputer.ui.video_player.VideoFileClip')
+    @patch('pygame.surfarray.make_surface')
+    def test_update_returns_frame(self, mock_make_surface, mock_video_clip_class, mock_pygame_surface, mock_video_file_clip):
+        """Test that update returns a frame for a playing video"""
+        # Setup
+        player = VideoPlayer(mock_pygame_surface)
+        mock_video_clip_class.return_value = mock_video_file_clip
+        
+        # Create a mock for the frame surface
+        mock_frame_surface = MagicMock(spec=pygame.Surface)
+        mock_frame_surface.get_width.return_value = 640
+        mock_frame_surface.get_height.return_value = 480
+        mock_make_surface.return_value = mock_frame_surface
+        
+        # Mock the numpy array returned by get_frame to prevent int conversion issues
+        frame_data = np.zeros((480, 640, 3), dtype=np.uint8)
+        mock_video_file_clip.get_frame.return_value = frame_data
+        
+        # Mock _scale_preserve_ratio to return the surface directly
+        with patch.object(player, '_scale_preserve_ratio', return_value=mock_frame_surface):
+            # Play a video first
+            with patch('os.path.exists', side_effect=lambda path: not path.endswith(".txt")):
+                with patch('time.time', return_value=100.0):
+                    player.play_video("testvideo.mp4")
+                
+            # Set time to within the video duration
+            with patch('time.time', return_value=105.0):  # 5 seconds into 10-second video
+                # Call update
+                frame, is_complete = player.update()
+                
+                # Verify
+                assert frame == mock_frame_surface
+                assert is_complete is False
+                mock_video_file_clip.get_frame.assert_called_with(5.0)
+    
+    @patch('dogputer.ui.video_player.VideoFileClip')
+    def test_update_signals_completion(self, mock_video_clip_class, mock_pygame_surface, mock_video_file_clip):
+        """Test that update signals completion when video ends"""
+        # Setup
+        player = VideoPlayer(mock_pygame_surface)
+        mock_video_clip_class.return_value = mock_video_file_clip
+        mock_video_file_clip.duration = 10.0
+        
+        # Mock the get_frame method to avoid int conversion issues
+        frame_data = np.zeros((480, 640, 3), dtype=np.uint8)
+        mock_video_file_clip.get_frame.return_value = frame_data
+        
+        # Play a video first
+        with patch('os.path.exists', side_effect=lambda path: not path.endswith(".txt")):
+            with patch('time.time', return_value=100.0):
+                player.play_video("testvideo.mp4")
+                
+        # Set time to after the video duration
+        with patch('time.time', return_value=111.0):  # 11 seconds into 10-second video
+            # Need to also patch pygame.surfarray.make_surface to avoid the exception
+            with patch('pygame.surfarray.make_surface') as mock_make_surface:
+                # Call update - no need to patch get_frame since we won't reach that code
+                frame, is_complete = player.update()
+                
+                # Verify
+                assert frame is None
+                assert is_complete is True

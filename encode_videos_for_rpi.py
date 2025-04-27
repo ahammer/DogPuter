@@ -12,17 +12,17 @@ from pathlib import Path
 # Configuration
 SOURCE_DIR = "media/videos_raw"
 TARGET_DIR = "media/videos"
-# Default to 854x480 (16:9 aspect ratio at 480p)
-TARGET_WIDTH = 854
-TARGET_HEIGHT = 480
+# Lower resolution for Raspberry Pi (360p instead of 480p)
+TARGET_WIDTH = 640
+TARGET_HEIGHT = 360
 # Use h.264 codec which is well supported by Raspberry Pi hardware acceleration
 VIDEO_CODEC = "libx264"
-# Use a preset that balances quality and encoding speed
-PRESET = "medium"
-# Target bitrate
-BITRATE = "1M"
-# CRF (Constant Rate Factor) - lower is better quality, 18-28 is typical range
-CRF = "23"
+# Use a faster preset for encoding that's more suited for Pi playback
+PRESET = "faster"
+# Lower bitrate to reduce decoding overhead
+BITRATE = "800k"
+# Higher CRF (more compression) to reduce file size
+CRF = "26"
 
 
 def get_video_info(video_path):

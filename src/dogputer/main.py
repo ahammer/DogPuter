@@ -12,7 +12,7 @@ from dogputer.core.config import (
     SUCCESS_COLOR, ALERT_COLOR, ERROR_COLOR, PAW_CURSOR_SIZE
 )
 from dogputer.core.commands import ExitCommand
-from dogputer.ui.video_player import VideoPlayer
+from dogputer.ui.video_player_rpi import VideoPlayer
 from dogputer.core.tts_handler import TTSHandler
 from dogputer.core.app_state import AppState, Mode
 from dogputer.ui.view_state import ViewStateGenerator

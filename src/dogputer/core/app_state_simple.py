@@ -70,6 +70,10 @@ class AppState:
         if isinstance(command, ExitCommand):
             print("Exit command received, setting mode to EXITING")
             self.mode = Mode.EXITING # Use the EXITING mode
+        elif self.mode == Mode.PLAYING:
+            # Ignore all non-exit commands while a video is playing
+            print("Ignoring command while video is playing")
+            return
         elif isinstance(command, ContentCommand):
             # Handle content command (e.g., play video)
             # Check if ContentCommand has content_id, otherwise use content_name as fallback
@@ -82,28 +86,20 @@ class AppState:
                 return # Cannot process command
 
             print(f"Content command received: {content_id}")
-
-            if self.mode == Mode.WAITING:
-                # If waiting, play immediately
-                self.play_video(content_id)
-                self.show_feedback(f"Playing: {content_id}")
-            else:
-                # If already playing, queue the next video
-                self.show_feedback(f"Next: {content_id}")
-                self.video_player.queue_video(f"{content_id}.mp4") # Assuming content_id is the base name
+            
+            # We're in WAITING mode now (PLAYING is handled above)
+            self.play_video(content_id)
+            self.show_feedback(f"Playing: {content_id}")
 
         elif hasattr(command, 'name'): # Fallback for other potential simple commands
-             command_name = command.name.lower()
-             print(f"Received named command: {command_name}")
-             # Handle named commands if necessary, similar to ContentCommand logic
-             if self.mode == Mode.WAITING:
-                 self.play_video(command_name)
-                 self.show_feedback(f"Playing: {command_name}")
-             else:
-                 self.show_feedback(f"Next: {command_name}")
-                 self.video_player.queue_video(f"{command_name}.mp4")
+            command_name = command.name.lower()
+            print(f"Received named command: {command_name}")
+            # Handle named commands if necessary
+            # We're in WAITING mode now (PLAYING is handled above)
+            self.play_video(command_name)
+            self.show_feedback(f"Playing: {command_name}")
         else:
-             print(f"Warning: Received unknown command type: {type(command)}")
+            print(f"Warning: Received unknown command type: {type(command)}")
 
     def play_video(self, content_id):
         """Play a video for the given content identifier"""

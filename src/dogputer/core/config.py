@@ -176,13 +176,8 @@ def create_default_ui_config():
             "FEEDBACK_HEIGHT": 80,
             "WAITING_TEXT_SIZE": 72,
             "FEEDBACK_TEXT_SIZE": 40
-        },
-        "animations": {
+        },        "animations": {
             "FEEDBACK_DURATION": 1.8,
-            "PARTICLE_MAX_COUNT": 40,
-            "PARTICLE_DEFAULT_LIFETIME": 1.0,
-            "PARTICLE_SIZE_RANGE": [3, 10],
-            "PARTICLE_SPEED_RANGE": [20, 80],
             "TRANSITION_DURATION": 0.8,
             "WAITING_ANIMATION_SPEED": 1.5
         }

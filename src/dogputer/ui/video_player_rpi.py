@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
 Video player module wrapper for Raspberry Pi
-This module provides a compatible interface between the standard VideoPlayer
+This module provides a compatible interface between the simplified VideoPlayer
 and the optimized RPiVideoPlayer, allowing them to be used interchangeably.
+This version is optimized for performance.
 """
 
 import os
@@ -24,8 +25,8 @@ if is_raspberry_pi():
     from dogputer.ui.rpi_video_player import RPiVideoPlayer as VideoPlayer
     print("Using RPi-optimized video player")
 else:
-    from dogputer.ui.video_player import VideoPlayer
-    print("Using standard video player")
+    from dogputer.ui.video_player_simple import VideoPlayer
+    print("Using simplified video player for better performance")
 
 # Re-export VideoPlayer
 __all__ = ['VideoPlayer']

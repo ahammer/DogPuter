@@ -5,7 +5,7 @@ This allows running the application using 'python -m dogputer'
 """
 
 import argparse
-from dogputer.main import DogPuter
+from dogputer.simple_main import SimpleDogPuter
 from dogputer.core.config import load_config
 
 def main():
@@ -50,7 +50,7 @@ def main():
     config = load_config(config_name)
     
     # Initialize and run the application
-    app = DogPuter(config=config, fullscreen=args.fullscreen)
+    app = SimpleDogPuter()
     app.run()
 
 if __name__ == "__main__":

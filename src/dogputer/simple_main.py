@@ -83,10 +83,17 @@ class SimpleDogPuter:
         """Play a sound from the sounds directory"""
         try:
             sound_path = os.path.join(self.sounds_dir, sound_name)
+            # Check if the file exists before trying to load it
+            if not os.path.exists(sound_path):
+                 print(f"Sound file not found, skipping: {sound_path}")
+                 return # No-op if file doesn't exist
+
             sound = pygame.mixer.Sound(sound_path)
             sound.play()
-        except pygame.error:
-            print(f"Could not play sound: {sound_name}")
+        except pygame.error as e: # Catch specific pygame errors during loading/playing
+            print(f"Could not play sound '{sound_name}': {e}")
+        except Exception as e: # Catch any other potential errors
+             print(f"An unexpected error occurred while trying to play sound '{sound_name}': {e}")
     
     def run(self):
         """Main game loop"""

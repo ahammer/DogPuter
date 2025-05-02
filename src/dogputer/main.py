@@ -18,7 +18,6 @@ from dogputer.core.app_state import AppState, Mode
 from dogputer.ui.view_state import ViewStateGenerator
 from dogputer.ui.renderer import Renderer
 from dogputer.ui.animation import AnimationSystem, EasingFunctions
-from dogputer.ui.particle_system import ParticleSystem
 
 # Try to import web interface components, but don't fail if they're not available
 WEB_INTERFACE_AVAILABLE = False
@@ -134,12 +133,8 @@ class DogPuter:
         
         # Initialize renderer
         self.renderer = Renderer(self.screen)
-        
-        # Initialize animation system
+          # Initialize animation system
         self.animation_system = AnimationSystem()
-        
-        # Initialize particle system
-        self.particle_system = ParticleSystem(self.screen_width, self.screen_height)
         
         # Generate QR code for web interface if available
         self.qr_code = None
@@ -293,15 +288,9 @@ class DogPuter:
             
             # Update input handler
             self.input_handler.update()
-            
-            # Get and process commands from our input handler
+              # Get and process commands from our input handler
             commands = self.input_handler.get_commands()
             for command in commands:
-                # Create particles for visual feedback when a command is received
-                x = random.randint(self.screen_width//3, 2*self.screen_width//3)
-                y = random.randint(self.screen_height//3, 2*self.screen_height//3)
-                self.particle_system.create_burst(x, y, count=15, color=YELLOW_PRIMARY)
-                
                 # Process the command
                 print(f"Processing command: {command}")
                 # Handle exit command specially
@@ -335,68 +324,13 @@ class DogPuter:
             
             # Update state
             self.app_state.update(delta_time)
-            
-            # Update animations
+              # Update animations
             self.animation_system.update_animations(delta_time)
-            
-            # Update particle system
-            self.particle_system.update(delta_time)
-            
-            # Create ambient particles in waiting mode with a more soothing pattern
-            if self.app_state.mode == Mode.WAITING:
-                # Lower the frequency for a more subtle effect
-                if random.random() < 0.02:  # 2% chance each frame instead of 5%
-                    # Use current time to create slowly flowing particle patterns
-                    current_time = time.time()
-                    
-                    # Determine which region of the screen to create particles in
-                    # Shift this gradually over time for a floating, gentle effect
-                    region_shift_x = math.sin(current_time * 0.1) * 0.3
-                    region_shift_y = math.cos(current_time * 0.08) * 0.2
-                    
-                    region_x = self.screen_width * (0.5 + region_shift_x)
-                    region_y = self.screen_height * (0.5 + region_shift_y)
-                    region_width = self.screen_width * 0.4
-                    region_height = self.screen_height * 0.4
-                    
-                    region = pygame.Rect(
-                        region_x - region_width/2,
-                        region_y - region_height/2,
-                        region_width,
-                        region_height
-                    )
-                    
-                    # Create more subtle particles with a softer appearance
-                    # Use primarily white/blue-tinted colors for a calming effect
-                    # Choose color based on the current time for a gentle shifting effect
-                    color_shift = (math.sin(current_time * 0.2) + 1) / 2  # 0 to 1
-                    
-                    if color_shift > 0.7:  # Occasionally use yellow for visual interest
-                        particle_color = YELLOW_PRIMARY
-                    else:  # Mostly use soft blue-white
-                        r = int(220 + color_shift * 35)
-                        g = int(220 + color_shift * 35)
-                        b = int(240 + color_shift * 15)
-                        particle_color = (r, g, b)
-                    
-                    # Create particles with longer minimum lifetime for more soothing flow
-                    self.particle_system.create_ambient(
-                        region_rect=region,
-                        count=3,  # Slightly more particles per batch
-                        color=particle_color,
-                        gravity=-0.1,  # Slight upward drift
-                        min_lifetime=1.5,  # Longer lifetime
-                        max_lifetime=3.0  # Longer max lifetime
-                    )
-            
-            # Generate view state
+              # Generate view state
             view_state = self.view_state_generator.generate_view_state(self.app_state)
             
             # Render view state
             self.renderer.render(view_state)
-            
-            # Draw particles on top
-            self.particle_system.draw(self.screen)
             
             # Render web interface info if enabled
             if self.web_interface_enabled:

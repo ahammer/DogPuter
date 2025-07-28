@@ -1,0 +1,20 @@
+{
+  "name": "Xbox Adaptive Controller - DogPuter",
+  "mappings": {
+    "buttonA": {
+      "description": "Left button - Used for scrolling in menu or pressing left in game",
+      "keycode": "ArrowLeft",
+      "alternativeKey": "Space"
+    },
+    "buttonB": {
+      "description": "Right button - Used for selecting in menu or pressing right in game", 
+      "keycode": "ArrowRight",
+      "alternativeKey": "Enter"
+    }
+  },
+  "notes": [
+    "Button A maps to left actions (scroll next, press left)",
+    "Button B maps to right actions (select, press right)",
+    "For testing, use Arrow Keys or Space/Enter"
+  ]
+}
